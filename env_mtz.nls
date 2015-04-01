@@ -1,0 +1,386 @@
+
+;; Define a new breed of turtle called peaks which should be at the locations with highest sensed values in the world
+breed [peaks peak]
+
+;; Define a new breed of turtle called pits which should be at the locations with lowest sensed values in the world
+breed [pits pit]
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Functions for creating randomized patches                                           ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Adjust the height and color of patches based on randomly generated peaks and pits
+;; Before calling this function, there should be two turtle breeds called peaks and pits.
+to drawPeakPitPatch
+  ask patches [ 
+    set pcolor white ;;Reset color
+    set height 0 ;;Reset height
+    if count peaks-here > 0 [
+      set height 1000 ;; The initial height of the patch containing a peak is 1000
+    ]
+    if count pits-here > 0 [
+      set height -1000 ;; The initial height of the patch containing a pit is -1000
+    ]    
+  ]
+  ;; Diffuse height value from peaks and pits
+  diffuse height 0.5 ;; Diffuse to one-hop neighbors
+  diffuse height 0.5 ;; Diffuse to two-hop neighbors
+  diffuse height 0.5 ;; Diffuse to two-hop neighbors
+  diffuse height 0.5 ;; Diffuse to two-hop neighbors    
+  ;; Find the max/min height after diffusion
+  let max-height -1000
+  let min-height 1000
+  ask patches [
+    if height > max-height [set max-height height]
+    if height < min-height [set min-height height]
+  ]
+  ;; Adjust the color based on height
+  ifelse max-height = min-height
+  [ask patches [set pcolor 96]] ;; No difference between peaks and pits in this special case
+  [
+    ask patches [
+      ifelse height >= 0 
+      [
+        set pcolor 96 - height / max-height * 4
+      ]
+      [
+        set pcolor 96 + height / min-height * 3.9
+      ]
+    ]    
+  ] 
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Functions for creating randomized regions                                           ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Draw a randomized region with size 'rsize', with a region value of rgn and starting at patch p
+to growRegion [rsize rgn p]
+  let rcolor 0
+  if rgn = ["A"] [set rcolor 57] ;; A is green
+  if rgn = ["B"] [set rcolor 107] ;; B is blue
+  if rgn = ["A" "B"] [set rcolor 87] ;; A B is cyan
+
+  ask p [
+    set pcolor rcolor
+    set region rgn
+  ]
+ 
+  ;; Build region of size rsize
+  let xsize 1
+  while [xsize < rsize] [   
+    carefully [
+      ask p [
+        ask one-of neighbors4 with [region = [] and InsideBuffer = true] [
+          set pcolor rcolor
+          set region rgn
+        ]
+      ]
+      set xsize xsize + 1
+    ]
+    [ if timer > 3.0 [ ;; If algorithm hangs, start again
+        show "Unrecoverable error, starting up again"
+        setup
+        initialize
+        stop
+      ]
+    ]
+    set p one-of patches with [
+      region = rgn and count neighbors4 with [region = [] and InsideBuffer = true] > 0
+    ]
+  ]
+  FillHole
+end
+
+;; Reports true if patch is inside the buffer
+to-report InsideBuffer
+  ifelse pxcor >= min-pxcor + 3 and pxcor <= max-pxcor - 3 and pycor >= min-pycor + 3 and pycor <= max-pycor - 3 [
+    report true
+  ]
+  [
+    report false
+  ]
+end
+
+;; If there are any holes in a region, fill them in
+to FillHole
+  repeat 3 [ ;; May need to do this more than once
+    ask patches with [region = [] and count neighbors with [region != []] >= 7] [
+      set region [region] of one-of neighbors4
+      if region = ["A"] [set pcolor 57] ;; A is green
+      if region = ["B"] [set pcolor 107] ;; B is blue
+      if region = ["A" "B"] [set pcolor 87] ;; A B is cyan
+    ]
+  ]
+end
+
+;; Incrementally evolve a region with region value rgn and size rsize
+to evolve-region [rgn rsize]
+  if rsize = "small" [set rsize int (count patches * .10)] ;; Small covers 10% of the area
+  if rsize = "medium" [set rsize int (count patches * .20)] ;; Small covers 20% of the area
+  if rsize = "large" [set rsize int (count patches * .30)] ;; Small covers 30% of the area    
+  let rcolor 0
+  if rgn = ["A"] [set rcolor 57] ;; A is green
+  if rgn = ["B"] [set rcolor 107] ;; B is blue
+  if rgn = ["A" "B"] [set rcolor 87] ;; A B is cyan  
+  
+  ;; Randomly select an empty patch that is one of the neighbors4 of a patch on the boundary
+  ;; Grow the region to the selected patch
+  let new_pxcor -1
+  let new_pycor -1  
+  ask one-of patches with [(region = rgn) and (any? neighbors4 with [region = []])] [
+    ask one-of neighbors4 with [region = []] [ ;; Select the new patch of the region
+      set region rgn
+      set pcolor rcolor
+    ]  
+  ]
+  ;; Keep the size of the region within a limit
+  while [count patches with [region = rgn] > rsize]
+  [ 
+    ;; Randomly remove a patch on the boundary of the region
+    let removed_pxcor -1
+    let removed_pycor -1
+    ask one-of patches with [(region = rgn) and (any? neighbors4 with [region = []])] [
+      set removed_pxcor pxcor ;; The coordinates of the removed patch
+      set removed_pycor pycor
+      set region [] ;;Remove the patch from the region
+      set pcolor white ;;Restore color
+    ]  
+    ;; Make sure that removing the patch won't break neighboring patches in the region into two or more parts
+    if count-flip patch removed_pxcor removed_pycor > 2 
+    [ 
+      ask patch removed_pxcor removed_pycor [ ;;Restore the patch
+        set region rgn 
+        set pcolor rcolor        
+      ] 
+    ]
+  ]
+  ;; Fill hole if there is any
+  FillHole    
+end
+
+;; Incrementally evolve region(s) with region value rgn and size rsize. A region can break into two or more parts.
+to evolve-region-special [rgn rsize]
+  if rsize = "small" [set rsize int (count patches * .10)] ;; Small covers 10% of the area
+  if rsize = "medium" [set rsize int (count patches * .20)] ;; Small covers 20% of the area
+  if rsize = "large" [set rsize int (count patches * .30)] ;; Small covers 30% of the area    
+  let rcolor 0
+  if rgn = ["A"] [set rcolor 57] ;; A is green
+  if rgn = ["B"] [set rcolor 107] ;; B is blue
+  if rgn = ["A" "B"] [set rcolor 87] ;; A B is cyan  
+  
+  ;; Randomly select an empty patch that is one of the neighbors4 of a patch on the boundary
+  ;; Grow the region to the selected patch
+  let new_pxcor -1
+  let new_pycor -1  
+  ask one-of patches with [(region = rgn) and (any? neighbors4 with [region = []])] [
+    ask one-of neighbors4 with [region = []] [ ;; Select the new patch of the region
+      set region rgn
+      set pcolor rcolor
+    ]  
+  ]
+  ;; Keep the size of the region within a limit
+  while [count patches with [region = rgn] > rsize]
+  [ 
+    ;; Randomly remove a patch on the boundary of the region
+    let removed_pxcor -1
+    let removed_pycor -1
+    ask one-of patches with [(region = rgn) and (any? neighbors4 with [region = []])] [
+      set removed_pxcor pxcor ;; The coordinates of the removed patch
+      set removed_pycor pycor
+      set region [] ;;Remove the patch from the region
+      set pcolor white ;;Restore color
+    ]  
+  ]
+  ;; Fill hole if there is any
+  FillHole     
+end
+
+;; Count the changes from 0 to 1 and 1 to 0 in the circle of the neighbors of a patch
+;; p is the patch at the center of the circle, rgn is the region value
+to-report count-flip [p]
+  let flips 0  
+  let inc_px -1 ;;Start from the neighbor in the left upper corner of the circle
+  let inc_py 1
+  let rgn []
+  if min-pxcor <= [pxcor] of p + inc_px and [pxcor] of p + inc_px <= max-pxcor and min-pycor <= [pycor] of p + inc_py and [pycor] of p + inc_py <= max-pycor [  
+    set rgn [region] of patch ([pxcor] of p + inc_px) ([pycor] of p + inc_py) ;;Get the region value of the neighbor  
+  ]
+  let next_inc next-inc inc_px inc_py ;;Get the increment of pxcor and pycor for next neighbor in the circle  
+  let next_inc_px item 0 next_inc
+  let next_inc_py item 1 next_inc
+
+  while [next_inc_px != inc_px or next_inc_py != inc_py] [
+    let next_rgn []
+    if min-pxcor <= [pxcor] of p + next_inc_px and [pxcor] of p + next_inc_px <= max-pxcor and min-pycor <= [pycor] of p + next_inc_py and [pycor] of p + next_inc_py <= max-pycor [
+      set next_rgn [region] of patch ([pxcor] of p + next_inc_px) ([pycor] of p + next_inc_py) ;;Get the region value of next neighbor
+      if rgn != next_rgn [set flips flips + 1] ;; When region value changes between two adjacent neighbors, increment the count of flips
+    ]
+    set rgn next_rgn      
+    set next_inc next-inc next_inc_px next_inc_py ;;Get the increment of pxcor and pycor for next neighbor in the circle
+    set next_inc_px item 0 next_inc
+    set next_inc_py item 1 next_inc    
+  ]  
+  report flips
+end
+
+;; Get the increment of pxcor and pycor for next neighbor in the circle surrounding a patch
+to-report next-inc [inc_px inc_py]
+  if inc_px = -1 and inc_py = 1 [report [0 1]]
+  if inc_px = 0 and inc_py = 1 [report [1 1]] 
+  if inc_px = 1 and inc_py = 1 [report [1 0]]
+  if inc_px = 1 and inc_py = 0 [report [1 -1]]
+  if inc_px = 1 and inc_py = -1 [report [0 -1]]
+  if inc_px = 0 and inc_py = -1 [report [-1 -1]]
+  if inc_px = -1 and inc_py = -1 [report [-1 0]]           
+  if inc_px = -1 and inc_py = 0 [report [-1 1]]  
+end
+
+
+;; Draw a randomized region. Parameter rsize is the relative size of the region. 
+to make-single-region [rsize]
+  if rsize = "small" [set rsize int (count patches * .10)] ;; Small covers 10% of the area
+  if rsize = "medium" [set rsize int (count patches * .20)] ;; Small covers 20% of the area
+  if rsize = "large" [set rsize int (count patches * .30)] ;; Small covers 30% of the area  
+
+  let p one-of patches with [
+    pxcor > int (.3 * min-pxcor) and pxcor < int (.3 * max-pxcor) and pycor > int (.3 * min-pycor) and pycor < int (.3 * max-pycor)
+  ]
+  growRegion rsize ["A"] p 
+  
+  ;; Making sure that the region does not touch the edge of the environment
+  ask patches with [InsideBuffer = false][
+    if region != [] [
+      set pcolor 9.9
+      set region []
+    ]
+  ]  
+end
+
+
+;; Draw a topological relation using randomized regions
+to make-region [rsize relation]
+  if rsize = "small" [set rsize int (count patches * .10)] ;; Small covers 10% of the area
+  if rsize = "medium" [set rsize int (count patches * .20)] ;; Small covers 20% of the area
+  if rsize = "large" [set rsize int (count patches * .30)] ;; Small covers 30% of the area
+
+  if relation = "A, B disjoint" [
+    let p one-of patches with [
+      pxcor > int (.6 * min-pxcor) and pxcor < int (.4 * min-pxcor) and pycor > int (.6 * min-pycor) and pycor < int (.4 * min-pycor)
+    ]
+    growRegion int (rsize * .5) ["A"] p
+    set p one-of patches with [
+      pxcor > int (.4 * max-pxcor) and pxcor < int (.6 * max-pxcor) and pycor > int (.4 * max-pycor) and pycor < int (.6 * max-pycor)
+    ]
+    growRegion int (rsize * .5) ["B"] p
+    ask patches with [region = ["A"] and count neighbors with [region = ["B"]] > 0] [
+      set pcolor 9.9
+      set region []     
+    ]
+  ]
+
+  if relation = "A, B meet" [
+    let p one-of patches with [
+      pxcor > int (.3 * min-pxcor) and pxcor < int (.3 * max-pxcor) and pycor > int (.3 * min-pycor) and pycor < int (.3 * max-pycor)
+    ]
+    growRegion int (rsize * .5) ["A"] p
+    set p one-of patches with [
+      region = [] and count neighbors4 with [region = ["A"]] > 0 and count neighbors4 with [region = []] > 0 and InsideBuffer = true
+    ]
+    growRegion int (rsize * .5) ["B"] p
+    ask patches with [region = ["A"] and count neighbors with [region = ["B"]] > 0] [
+      set region ["A" "B"]
+      set pcolor 87 ;; Region B is cyan
+    ]
+  ]
+
+  if relation = "A, B equals" [
+    let p one-of patches with [
+      pxcor > int (.3 * min-pxcor) and pxcor < int (.3 * max-pxcor) and pycor > int (.3 * min-pycor) and pycor < int (.3 * max-pycor)
+    ]
+    growRegion rsize ["A" "B"] p
+  ]
+
+  if relation = "A inside B" [
+    let p one-of patches with [
+      pxcor > int (.3 * min-pxcor) and pxcor < int (.3 * max-pxcor) and pycor > int (.3 * min-pycor) and pycor < int (.3 * max-pycor)
+    ]
+    growRegion int (rsize * .3) ["A" "B"] p
+    ask patches with [region = [] and count neighbors with [region = ["A" "B"]] > 0] [
+      set region ["B"]
+      set pcolor 107 ;; Region B is blue
+    ]
+    ask patches with [region = [] and count neighbors4 with [region = ["B"]] > 0] [
+      set region ["B"]
+      set pcolor 107 ;; Region B is blue
+    ]
+    set p one-of patches with [
+      region = [] and count neighbors4 with [region = ["B"]] > 0 and count neighbors4 with [region = []] > 0 and InsideBuffer = true
+    ]
+    growRegion int (rsize * .5) ["B"] p   
+  ]
+
+  if relation = "A contains B" [
+    let p one-of patches with [
+      pxcor > int (.3 * min-pxcor) and pxcor < int (.3 * max-pxcor) and pycor > int (.3 * min-pycor) and pycor < int (.3 * max-pycor)
+    ]
+    growRegion (rsize * .3) ["A" "B"] p
+    ask patches with [region = [] and count neighbors with [region = ["A" "B"]] > 0] [
+      set region ["A"]
+      set pcolor 57 ;; Region A is green
+   ]
+    ask patches with [region = [] and count neighbors4 with [region = ["A"]] > 0] [
+      set region ["A"]
+      set pcolor 57 ;; Region A is green
+    ]
+    set p one-of patches with [
+      region = [] and count neighbors4 with [region = ["A"]] > 0 and count neighbors4 with [region = []] > 0 and InsideBuffer = true
+    ]
+    growRegion int (rsize * .5) ["A"] p
+  ]
+
+  if relation = "A covered by B" [
+    let p one-of patches with [
+      pxcor > int (.3 * min-pxcor) and pxcor < int (.3 * max-pxcor) and pycor > int (.3 * min-pycor) and pycor < int (.3 * max-pycor)
+    ]
+    growRegion int (rsize * .4) ["A" "B"] p
+    set p one-of patches with [
+      region = [] and count neighbors4 with [region = ["A" "B"]] > 0 and count neighbors4 with [region = []] > 0 and InsideBuffer = true
+    ]
+    growRegion int (rsize * .6) ["B"] p   
+  ]
+
+  if relation = "A covers B" [
+    let p one-of patches with [
+      pxcor > int (.3 * min-pxcor) and pxcor < int (.3 * max-pxcor) and pycor > int (.3 * min-pycor) and pycor < int (.3 * max-pycor)
+    ]
+    growRegion int (rsize * .4) ["A" "B"] p
+    set p one-of patches with [
+      region = [] and count neighbors4 with [region = ["A" "B"]] > 0 and count neighbors4 with [region = []] > 0 and InsideBuffer = true
+    ]
+    growRegion int (rsize * .6) ["A"] p
+  ]
+
+  if relation = "A, B overlap" [
+    let p one-of patches with [
+      pxcor > int (.3 * min-pxcor) and pxcor < int (.3 * max-pxcor) and pycor > int (.3 * min-pycor) and pycor < int (.3 * max-pycor)
+    ]
+    growRegion int (rsize * .4) ["A" "B"] p
+    set p one-of patches with [
+      region = [] and count neighbors4 with [region = ["A" "B"]] > 0 and count neighbors4 with [region = []] > 0 and InsideBuffer = true
+    ]
+    growRegion int (rsize * .3) ["A"] p
+    set p one-of patches with [
+      region = [] and count neighbors4 with [region = ["A" "B"]] > 0 and count neighbors4 with [region = []] > 0 and InsideBuffer = true
+    ]
+    growRegion int (rsize * .3) ["B"] p
+  ]
+
+  ;; Making sure that the region does not touch the edge of the environment
+  ask patches with [InsideBuffer = false][
+    if region != [] [
+      set pcolor 9.9
+      set region []
+    ]
+  ]
+end

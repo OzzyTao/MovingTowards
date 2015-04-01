@@ -1,0 +1,532 @@
+;; Every turtle stores 4 local variables:
+;; * messages, a list of received messages
+;; * state, the automaton state of the mote
+;; * parent, the parent of the mote
+;; * children, the list of the motes children
+;; In addition, two variables are used for reporting: 
+;; * Sent messages in msgsent (list of messages sent, structured [[m1, n1, l1], [n2, n2, l2], ...])
+;; * Received messages in msghear (messages heard, but not processed), same structure. 
+;; * Received messages in msgrecv (messages received and processed), same structure. 
+;; m1, m2, ... is message name; n1, n2, ... is number of messages; l1, l2, ... is message length
+turtles-own [messages state parent children msgsent msgrecv msghear]
+
+;; Each patch can store the local variable region.
+;; Each patch can store the local variable height which will be the sensed value of any mote in the patch
+patches-own [region height] 
+
+;; Runs all the tasks common to every algorithm for setting up the world
+to setup
+  clear-all ;; Clear the world
+  reset-ticks
+  create-motes netsize
+  create-objects ObjNo
+  ask motes [
+    set size (world-width / 21) ;; Size of mote is proportional to the world size
+    set color grey ;; Every mote starts grey
+    set shape "mote" ;; Every mote starts with a dot shape
+    setxy random-xcor random-ycor ;; Every mote has a random position
+    set heading 0 ;; Making sure the mote icons aren't rotated
+    set label-color black ;; The label color is black
+    set messages [] ;; Clear any messages
+    set msgsent [] ;; Clear the list of messages sent
+    set msgrecv [] ;; Clear the list of messages received
+    set msghear [] ;; Clear the list of messages received    
+  ]
+  ask objects [
+    set size (world-width / 21) ;; Size of mote is proportional to the world size
+    setxy random-xcor random-ycor ;; Every mote has a random position
+    set heading 0 ;; Making sure the mote icons aren't rotated
+  ]
+  
+  ask patches [
+    set pcolor 9.9 ;; Set a white background
+    set region []
+  ]
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Miscellaneous functions                                                             ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Changing state for a mote is achieved with the command 'become "STATE"'
+to become [newstate]
+  set state newstate
+  set shape "mote"
+  if state = "DONE" [set color 0] ;; Black
+;  if state = "INIT" [set color 9.9] ;; White
+  if state = "IDLE" [set color 86] ;; Light blue
+  if state = "CHCK" [set color 104] ;; Dark blue
+  if state = "PITX" [set color 45] ;; Yellow
+  if state = "DEAD" or state = "PEAK" [set color 15] ;; Red
+  if state = "SINK" or state = "LEAD" or state = "ROOT" [set color 114] ;; Purple
+  if state = "EVNT" or state = "GBRG" or state = "RNBR" or state = "BNDY" [
+    set color 95 ;; Mid blue
+  ]
+  if state = "SEND" [
+    set shape "mote_communicate"
+    set color 86 ;; Light blue
+  ]
+  if state = "LSTN" [
+    set shape "mote_communicate"
+    set color 95 ;; Mid blue
+  ]
+end
+
+;; Performs the binary OR operation
+to-report BinaryOR [bina binb]
+  ifelse length bina = length binb [ ;; Making sure the two numbers are the same length
+    let stringlength length bina
+    let tmp 0
+    let result 10 ^ stringlength
+    set result (word result)
+    set result remove-item 0 result ;; Result is a string of zeros the same length of a
+    repeat stringlength [ ;; Performing the binary OR operation
+      if item tmp bina = "1" or item tmp binb = "1" [set result replace-item tmp result "1"]
+      set tmp (tmp + 1)
+    ]
+    report result
+  ]
+  [ ;; If the two numbers are not the same length
+    show "Error: numbers are not the same length"
+    report []
+  ]
+end
+
+;; Given the x and y coordinates of two positions, this function reports the distance
+to-report dist [coords.a coords.b]
+  let x1 item 0 coords.a
+  let y1 item 1 coords.a
+  let x2 item 0 coords.b
+  let y2 item 1 coords.b  
+  report sqrt ((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Functions for sending and receiving messages                                        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Received messages are added to the queue
+to receive [message]
+  set messages lput message messages
+  if trackmsg [
+    update-msg-count "HEAR" message
+  ]
+end
+
+;; Broadcasting messages involves sending them to all link neighbors
+to broadcast [message]
+  ask link-neighbors [receive message]
+  if trackmsg [
+    update-msg-count "SENT" message
+  ]
+end
+
+;; Sending messages is a unicast to a specified target
+to send [message target]
+  ask target [receive message]
+  if trackmsg [
+    update-msg-count "SENT" message
+  ]
+end
+
+;; Reports true if a particular message has been received.
+to-report has-message [mtype]
+  foreach messages [
+    if first ? = mtype [
+      report true
+    ]
+  ]
+  report false
+end
+
+;; Received checks whether a message of a particular type has been received, and if so
+;; places this message in the nextmessage slot
+to-report received [mtype]
+  foreach messages [
+    if first ? = mtype [
+      set messages remove-item position ? messages messages ;; This only removes one item
+      let nextmessage ?
+      if trackmsg [
+        update-msg-count "RECV" nextmessage
+      ]
+      report nextmessage
+    ]
+  ]
+  report []
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utility functions for reporting on different messages                               ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; update-msg-count updates the stored message count on each node (number and length)
+;; The data is stored in a list [[name1 n1 l1] [name2 n2 l2] ... ] where 
+;; name1, name2, ... is the names of different message types, 
+;; n1, n2, ... is the number of messages of that type sent/received, and
+;; l1, l2, ... is the length of messages of that type sent/received
+;; Argument "sent" is either true or false. If true, the msgsent counts are updated; if 
+;; false the msgrecv counts are updated
+;; Argument "message" contains the message to be sent/received
+to update-msg-count [mtype message] 
+  let msgcount msghear ;; By default update counts messages heard 
+  if mtype = "SENT" [set msgcount msgsent] ;; If sent=true then update counts of messages sent
+  if mtype = "RECV" [set msgcount msgrecv] ;; If sent=true then update counts of messages received
+
+  ;; tind is the index of the message name in msgsent/msgrecv 
+  ;; if the message name does not appear in msgsent/msgrecv, tind is false
+  ;; for example: if msgcount is [["MSGE" 1 4] ["PING" 10 30]] and message is ["PING" ...] then tind = 1     
+  ;; conversely if message is ["BDNY" ...] then tind = false
+  let tind position first message map [first ?] msgcount  
+  ifelse is-number? tind [
+    ;; Update the count of numbers of message
+    set msgcount replace-item tind msgcount (replace-item 1 (item tind msgcount) ((item 1 (item tind msgcount)) + 1) ) 
+    ;; Update the count of length of message
+    set msgcount replace-item tind msgcount (replace-item 2 (item tind msgcount) ((item 2 (item tind msgcount)) + sum map [length (word ?)] message))
+  ]
+  [
+    ;; Add new count for this message type
+    set msgcount fput (list first message 1 (sum map [length (word ?)] message)) msgcount
+  ]
+  
+  ;; Write the results back to msgsent/msgrecv 
+  if mtype = "SENT" [set msgsent msgcount] ;; If update counts of messages sent
+  if mtype = "RECV" [set msgrecv msgcount] ;; If update counts of messages received
+  if mtype = "HEAR" [set msghear msgcount] ;; If update counts of messages heard
+end
+
+;; reports message count totals for all motes
+;; argument "mtype" is "SENT", "RECV", or "HEAR"
+;; argument "lngth" is true if message length is to be reported; false if number of messages is to be reported
+to-report msg-totals [mtype lngth]
+  let ind 1 
+  if lngth = true [set ind 2]
+  if mtype = "SENT" [
+    report sum [sum map [item ind ?] msgsent] of motes with [length msgsent > 0]
+  ]
+  if mtype = "RECV" [
+    report sum [sum map [item ind ?] msgrecv] of motes with [length msgrecv > 0]
+  ]
+  if mtype = "HEAR" [
+    report sum [sum map [item ind ?] msghear] of motes with [length msghear > 0]
+  ]
+end
+
+;; reports message count totals for all motes for a particular message name
+;; argument "sent" is true if sent messages to be reported; false if received messages to be reported
+;; argument "lngth" is true if message length is to be reported; false if number of messages is to be reported
+;; argument "name" is the name of the message to be counted
+to-report msg-totals-by-name [mtype lngth name]
+  let ind 1 
+  if lngth = true [set ind 2]
+  if mtype = "SENT" [
+    report sum [sum map [item ind ?] filter [first ? = name] msgsent] of motes with [length filter [first ? = name] msgsent > 0]
+  ]
+  if mtype = "HEAR" [
+    report sum [sum map [item ind ?] filter [first ? = name] msghear] of motes with [length filter [first ? = name] msghear > 0]
+  ]
+  if mtype = "RECV" [
+    report sum [sum map [item ind ?] filter [first ? = name] msgrecv] of motes with [length filter [first ? = name] msgrecv > 0]
+  ]
+end
+
+;; Wrapper for msg-totals
+to-report sent-length-msg-totals
+  report msg-totals "SENT" true
+end
+
+;; Wrapper for msg-totals
+to-report sent-number-msg-totals
+  report msg-totals "SENT" false
+end
+
+;; Wrapper for msg-totals
+to-report recv-length-msg-totals
+  report msg-totals "RECV" true
+end
+
+;; Wrapper for msg-totals
+to-report recv-number-msg-totals
+  report msg-totals "RECV" false
+end
+
+;; Wrapper for msg-totals
+to-report hear-length-msg-totals
+  report msg-totals "HEAR" true
+end
+
+;; Wrapper for msg-totals
+to-report hear-number-msg-totals
+  report msg-totals "HEAR" false
+end
+
+;; Wrapper for msg-totals-by-name
+to-report sent-length-msg-totals-by-name [name]
+  report msg-totals-by-name "SENT" true name
+end
+
+;; Wrapper for msg-totals-by-name
+to-report sent-number-msg-totals-by-name [name]
+  report msg-totals-by-name "SENT" false name
+end
+
+;; Wrapper for msg-totals-by-name
+to-report recv-length-msg-totals-by-name [name]
+  report msg-totals-by-name "RECV" true name
+end
+
+;; Wrapper for msg-totals-by-name
+to-report recv-number-msg-totals-by-name [name]
+  report msg-totals-by-name "RECV" false name
+end
+
+;; Wrapper for msg-totals-by-name
+to-report hear-length-msg-totals-by-name [name]
+  report msg-totals-by-name "HEAR" true name
+end
+
+;; Wrapper for msg-totals-by-name
+to-report hear-number-msg-totals-by-name [name]
+  report msg-totals-by-name "HEAR" false name
+end
+
+;; Utility function for counting occurrences of an item in a list
+to-report count-occurrences [x mylist]
+  report length filter [? = x] mylist
+end
+
+;; Utility function to output a histogram data list
+to-report histogram-data [mylist]
+  let ditems ""
+  let dcount ""
+  foreach reverse sort remove-duplicates mylist [
+    set ditems (word ? ", " ditems)
+  ]  
+  foreach reverse sort remove-duplicates mylist [
+    set dcount (word count-occurrences ? mylist ", " dcount)
+  ]  
+  report (word "items, " ditems " count, " dcount)
+
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Functions related to network topology                                               ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Reports true if the network is connected. Uses the breadth-first search
+to-report connected
+  report connected-component motes
+end
+
+
+;; Reports true if the network is connected. Uses the breadth-first search
+to-report connected-component [mymotes]
+  let processing []
+  let visited [] 
+  set processing fput [who] of one-of mymotes visited
+  
+  while [not empty? processing] [
+    let v item 0 processing
+    set processing remove-item 0 processing
+    set visited fput v visited
+    ask mote v [ask link-neighbors [if not member? who visited and member? self mymotes [set processing fput who processing]]]
+    set processing remove-duplicates processing
+  ]
+  
+  if length visited < count mymotes [report false]
+  report true
+end
+
+to-report twoconnected [mymotes]
+  let res true
+  ask mymotes [
+    if not connected-component other mymotes [set res false]
+  ]
+  report res
+end
+
+;; Determine the next position of a mote
+;; crw (correlated random walk) is a boolean value for movement direction
+;; lf (levy flight) is a boolean value for movement speed
+to move-mote [crw lf]
+  ifelse crw = true 
+    [rt random-normal 0 45] ;; Change the heading of the mote based on Gaussian Distribution with standard deviation of 45 degree
+    [rt random-float 360]
+  ifelse lf = true
+    [jump random-normal 0.3 0.2] ;; Move forward based on Gaussian Distribution
+    [jump 0.2]
+end
+
+;; Create UDG. Asks every mote to make a link with any other mote that is within
+;; the communication distance c
+to create-udg
+  foreach sort motes [
+    ask ? [
+      foreach sort motes [if distance ? > 0 and distance ? < c [create-link-with ?]]
+    ] ;; Distance needs to be greater than 0 as a mote can't make a link with itself
+  ]
+end
+
+;; Create a Gabriel Graph
+to create-gg
+  create-planar-graph true
+end
+
+;; Create a Relative Neighborhood Graph
+to create-rng
+  create-planar-graph false
+end
+
+;; Create a planar graph
+to create-planar-graph [isgg]
+  foreach sort motes [
+    ask ? [ ;; Ask each mote
+      let u ?
+      foreach sort link-neighbors [ ;; For every neighbor of mote u
+        let v ? ;; Let the neighboring mote be mote v
+        let distuv distance v ;; Distance between motes u and v
+        ifelse all? link-neighbors [ check-planarity u v distuv isgg = true ]
+          []  ;; If all neighbors of mote v meet the GG/RNG conditions, do nothing
+          [ask link-with v [set color red]] ;; If any neighbors don't, mark link for deletion
+      ]
+    ]
+  ]
+  ask links with [color = red] [die] ;; Delete all red links
+end
+
+;; Reports true if the network is planar.
+to-report check-planarity [u v distuv isgg]
+  ifelse isgg = true
+    [report check-gg u v distuv] ;; Perform the GG check
+    [report check-rng u v distuv] ;; Perform the RNG check
+end
+
+;; Reports true if the UDG conditions have been met.
+to-report check-rng [u v distuv]
+  ifelse distance u >= distuv or distance v >= distuv
+    [report true]
+    [report false]
+end
+
+;; Reports true if the GG conditions have been met.
+to-report check-gg [u v distuv]
+  ifelse ((distance u) ^ 2) + ((distance v) ^ 2)  >= (distuv ^ 2)
+    [report true]
+    [report false]
+end
+
+;; Create Tree network
+to create-tree
+  ask motes [set parent ""]
+  ;; Clearing the motes parent variable
+  ask one-of motes [ ;; Set a random mote to the tree state, this will be the root
+    become "TREE"    ;; mote
+    set parent -1 ;; The root mote should have no parent
+  ]
+
+  ;; While any tree motes have neighbors that are not part of the tree
+  while [any? motes with [state = "TREE" and any? link-neighbors with [state != "TREE"]]] [
+    ask one-of motes with [state = "TREE"] [ ;; Ask one of these tree motes
+      let t1 who ;; t1 is the mote id of every neighbor that's not part of the tree
+      ask link-neighbors with [state != "TREE"] [
+        let t2 who ;; t2 is the mote id of every neighbor that is part of the tree
+        ask link-neighbors with [state = "TREE"] [ ;; Kill links with all neighbors
+          ask link-with mote t2 [die]              ;; that are part of the tree
+        ]
+        create-link-with mote t1 ;; Create link with all neighbors that are not
+                                 ;; part of the tree
+        become "TREE" ;; Set the neighbor motes state to tree
+        set parent t1 ;; Set the neighbor motes parent id
+      ] 
+    ]
+  ]
+  ask motes [
+    set children [who] of link-neighbors ;; Adds all link neighbors to list
+    foreach children [
+      if ? = parent [
+        set children remove ? children ;; Removes parent from children list
+      ]
+    ]
+  ]
+end
+
+;; Determines the next neighbor in the anti-clockwise direction for any given neighbor
+to-report cyc [id]
+  let nbr [who] of link-neighbors
+  ifelse member? id nbr [ ;; Making sure that id is a neighbor of mote
+    let max.ang 0
+
+    foreach nbr [
+      let ang subtract-headings towards (mote ?) towards (mote id) ;; Finding the angle between neighbours and id
+      if ang < 0 [set ang (ang + 360)] ;; Making sure all bearings are positive
+      if ang > max.ang [set max.ang ang] ;; Finding the largest angle
+      set nbr lput (list ? ang) nbr
+      set nbr remove-item 0 nbr
+    ]
+
+    foreach nbr [
+      let id' item 0 ?
+      let ang item 1 ?
+      if ang = max.ang [ ;; The next neighbor from id in the anti-clockwise direction will have the largest angle
+        report id' ;; Report back the id of next neighbor
+      ]
+    ]
+  ]
+  [ ;; If the id mote is not a neighbor, then report back an impossible mote id
+    report -1
+  ]
+end
+
+;; Determines the anticlockwise angle between three locations.
+to-report angle [pa pb pc]
+  let ba.x (item 0 pa) - (item 0 pb)
+  let ba.y (item 1 pa) - (item 1 pb)
+  let bc.x (item 0 pc) - (item 0 pb)
+  let bc.y (item 1 pc) - (item 1 pb)
+
+  let bearing.ba atan ba.x ba.y ;; Finding the two bearings
+  let bearing.bc atan bc.x bc.y
+
+  let angle.abc (bearing.ba - bearing.bc) ;; Finding the angle
+  if angle.abc <= 0 [ ;; Ensuring that the angle id always between 0 and 360 degrees
+    set angle.abc (360 + angle.abc)
+  ]
+  report angle.abc
+end
+
+to-report IsOnSegment [xi yi xj yj xk yk]
+  ifelse (xi <= xk or xj <= xk) and (xk <= xi or xk <= xj) and (yi <= yk or yj <= yk) and (yk <= yi or yk <= yj)
+  [report true]
+  [report false]
+end
+
+to-report ComputeDirection [xi yi xj yj xk yk]
+  let a (xk - xi) * (yj - yi)
+  let b (xj - xi) * (yk - yi)
+  if a < b [report -1]
+  if a > b [report 1]
+  if a = b [report 0]
+end
+
+to-report intersect [p_a p_b p_c p_d]
+  let x1 item 0 p_a
+  let y1 item 1 p_a
+  let x2 item 0 p_b
+  let y2 item 1 p_b
+  let x3 item 0 p_c
+  let y3 item 1 p_c
+  let x4 item 0 p_d
+  let y4 item 1 p_d
+  let d1 ComputeDirection x3 y3 x4 y4 x1 y1
+  let d2 ComputeDirection x3 y3 x4 y4 x2 y2
+  let d3 ComputeDirection x1 y1 x2 y2 x3 y3
+  let d4 ComputeDirection x1 y1 x2 y2 x4 y4
+  ifelse (((d1 > 0 and d2 < 0) or (d1 < 0 and d2 > 0)) and ((d3 > 0 and d4 < 0) or (d3 < 0 and d4 > 0)))
+  or (d1 = 0 and IsOnSegment x3 y3 x4 y4 x1 y1) or (d2 = 0 and IsOnSegment x3 y3 y4 y4 x2 y2) 
+  or (d3 = 0 and IsOnSegment x1 y1 x2 y2 x3 y3) or (d4 = 0 and IsOnSegment x1 y1 x2 y2 x4 y4)
+  [report true]
+  [report false]
+end
