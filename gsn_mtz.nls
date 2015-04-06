@@ -21,9 +21,10 @@ to setup
   create-motes netsize
   create-objects ObjNo
   ask motes [
-    set size (world-width / 21) ;; Size of mote is proportional to the world size
+    ;set size (world-width / 21) ;; Size of mote is proportional to the world size
+    set size s * 2
     set color grey ;; Every mote starts grey
-    set shape "mote" ;; Every mote starts with a dot shape
+    set shape "sensor" ;; Every mote starts with a dot shape
     setxy random-xcor random-ycor ;; Every mote has a random position
     set heading 0 ;; Making sure the mote icons aren't rotated
     set label-color black ;; The label color is black
@@ -53,7 +54,7 @@ end
 ;; Changing state for a mote is achieved with the command 'become "STATE"'
 to become [newstate]
   set state newstate
-  set shape "mote"
+  set shape "sensor"
   if state = "DONE" [set color 0] ;; Black
 ;  if state = "INIT" [set color 9.9] ;; White
   if state = "IDLE" [set color 86] ;; Light blue
