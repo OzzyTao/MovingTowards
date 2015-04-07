@@ -35,7 +35,7 @@ to initialize
     set m []
     ;set shape "sensor"
     ;calculate dir(me,Z), store in zr, use me as a reference
-    set zr CDC-dir bounding-box targetzone-boundingbox
+    set zr CDC-dir targetzone-boundingbox bounding-box
     become "IDLE"
   ]
   
@@ -313,7 +313,7 @@ INPUTBOX
 160
 105
 c
-1
+4
 1
 0
 Number
@@ -324,7 +324,7 @@ INPUTBOX
 210
 105
 s
-5
+20
 1
 0
 Number
@@ -352,7 +352,7 @@ INPUTBOX
 110
 105
 ObjNo
-3
+1
 1
 0
 Number
