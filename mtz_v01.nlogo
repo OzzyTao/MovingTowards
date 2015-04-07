@@ -102,6 +102,7 @@ to mote-labels
     if MoteLabel = "none" [set label ""] ;; Hide the label
     if MoteLabel = "mote id" [set label who] ;; Show mote id
     if MoteLabel = "m" [set label m] ;; Show contents of m
+    if MoteLabel = "zr" [set label zr] ;; Show contents of m
   ]
 end
 
@@ -397,7 +398,7 @@ CHOOSER
 MoteLabel
 MoteLabel
 "none" "mote id" "m" "zr"
-1
+3
 
 @#$#@#$#@
 ## PROTOCOL
