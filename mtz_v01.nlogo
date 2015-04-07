@@ -396,7 +396,7 @@ CHOOSER
 280
 MoteLabel
 MoteLabel
-"none" "mote id" "m"
+"none" "mote id" "m" "zr"
 1
 
 @#$#@#$#@
@@ -460,7 +460,7 @@ true
 Circle -7500403 true true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
