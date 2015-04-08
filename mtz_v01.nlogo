@@ -1,7 +1,7 @@
  __includes["./gsn_mtz.nls" "./env_mtz.nls"]
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
-motes-own [m zr]
+motes-own [m zr history]
 
 ;; Define a new breed of turtle called motes (i.e. moving objects)
 breed [objects object]
@@ -30,14 +30,22 @@ to initialize
     ]
   ;; store the info of z-zone in a global variable
   set-target-bounding-box
+  create-udg
+  ;create-tree
+  ask motes [ become "INIT"]
+  ask one-of motes [ become "INIZ" ]
   
-  ask motes [
-    set m []
-    ;set shape "sensor"
-    ;calculate dir(me,Z), store in zr, use me as a reference
-    set zr CDC-dir targetzone-boundingbox bounding-box
-    become "IDLE"
-  ]
+  ask motes [ 
+    set m [] 
+    set history []
+    ]
+  ;ask motes [
+   ; set m []
+   ; ;set shape "sensor"
+   ; ;calculate dir(me,Z), store in zr, use me as a reference
+   ; set zr CDC-dir targetzone-boundingbox bounding-box
+   ; become "IDLE"
+  ;]
   
   reset-ticks
 end
@@ -45,9 +53,11 @@ end
 ;; Run the algorithm
 to go
   ask motes [step]
-  move-objects
-  mote-labels
-  object-tails
+  if remainder ticks 10 = 0 [ 
+    move-objects
+    mote-labels
+    object-tails
+  ]
   tick
 end
 
@@ -57,15 +67,37 @@ end
 
 ;; Step through the current state
 to step
+  if state = "INIZ" [step_INIZ stop]
   if state = "INIT" [step_INIT stop]
   if state = "IDLE" [step_IDLE stop]
 end
 
+to step_INIZ
+  broadcast (list "ZBOX" targetzone-boundingbox)
+  become "IDLE"
+end
+
 to step_INIT
-    stop   ;; currently skeleton
+  if has-message "ZBOX" [
+    let msg received "ZBOX"
+    let zbox item 1 msg
+    set zr CDC-dir zbox bounding-box
+    broadcast (list "ZBOX" zbox)
+    become "IDLE"
+    ]
 end
 
 to step_IDLE
+  ;; when receieve a message AEXT
+  if has-message "AEXT" [
+    let msg received "AEXT"
+    let record but-first msg
+    if not is-old record [
+      set history lput record history
+      broadcast msg
+      ]
+    ]
+  
   let sensor self
   let in-range-objects objects with [ within-sensing-range sensor ] 
   ;; visual effect for sensing
@@ -77,14 +109,32 @@ to step_IDLE
   ;; update history table to add new records when an object enters
   foreach sort in-range-objects [
     if which-active-record [who] of ? = -1 [
+      ;; when an entering event is detected 
       let temprecord [ "NULL" 0 "NULL" ]
       set temprecord replace-item 0 temprecord [who] of ?
       set temprecord replace-item 1 temprecord ticks
       set m lput temprecord m
+      if has-record item 0 temprecord [
+        let previous recent-record item 0 temprecord
+        let predir CDC-dir bounding-box (item 2 previous)
+        if not empty? (filter [member? ? zr] predir) [
+          print "moving towards"
+          ]
+        ]
       ]
     ]
   ;; update history table to finish open records when corresponding objects cannot be sensed
-  close-inactive-records
+  foreach filter [ item 2 ? = "NULL" ] m [
+    let tempobj object item 0 ?
+    if distance tempobj > s [
+      ;; when an exiting event is detected
+      let temprecord replace-item 2 ? ticks
+      set m replace-item position ? m m temprecord
+      let msg (list item 0 temprecord who bounding-box item 1 temprecord item 2 temprecord)
+      set history lput msg history
+      broadcast fput "AEXT" msg
+      ]
+    ]
 end
 
 ;; Move object (based on modified correlated random walk)
@@ -223,6 +273,24 @@ to-report CDC-dir [reference target]
     ]
   report cdc
 end
+
+to-report is-old [record]
+  foreach history [
+    if item 0 ? = item 0 record and item 1 ? = item 1 record and item 3 ? = item 3 record and item 4 ? = item 4 record [ report true ] 
+    ]
+  report false
+end
+
+to-report has-record [obj-id]
+  foreach history [
+    if item 0 ? = obj-id [ report true ]
+    ]
+  report false
+end
+
+to-report recent-record [obj-id]
+  report last sort-by [item 3 ?1 < item 3 ?2] (filter [item 0 ? = obj-id] history)
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 220
@@ -313,7 +381,7 @@ INPUTBOX
 160
 105
 c
-4
+40
 1
 0
 Number
@@ -324,7 +392,7 @@ INPUTBOX
 210
 105
 s
-20
+5
 1
 0
 Number
