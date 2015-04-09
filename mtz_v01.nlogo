@@ -92,9 +92,18 @@ to step_IDLE
   if has-message "AEXT" [
     let msg received "AEXT"
     let record but-first msg
-    if not is-old record [
-      set history lput record history
+    let location history-location first record
+    ifelse location < 0 [
+      set history lput (lput record []) history
       broadcast msg
+      ]
+    [
+      let its-history item location history
+      if not is-old its-history record [
+        set its-history lput record its-history
+        set history replace-item location history its-history
+        broadcast msg 
+        ] 
       ]
     ]
   
@@ -114,27 +123,32 @@ to step_IDLE
       set temprecord replace-item 0 temprecord [who] of ?
       set temprecord replace-item 1 temprecord ticks
       set m lput temprecord m
-      if has-record item 0 temprecord [
-        let previous recent-record item 0 temprecord
+      let location history-location first temprecord
+      let its-history []
+      
+      if location >= 0 [
+        set its-history item location history
+        let previous recent-record its-history
         let predir CDC-dir bounding-box (item 2 previous)
         if not empty? (filter [member? ? zr] predir) [
           print "moving towards"
           ]
         ]
+      
+      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
+      set its-history lput msg its-history
+      ifelse location >= 0 [
+        set history replace-item location history its-history
+        ]
+      [
+        set history lput its-history history
+        ]
+      broadcast fput "AEXT" msg
+      display-history
       ]
     ]
   ;; update history table to finish open records when corresponding objects cannot be sensed
-  foreach filter [ item 2 ? = "NULL" ] m [
-    let tempobj object item 0 ?
-    if distance tempobj > s [
-      ;; when an exiting event is detected
-      let temprecord replace-item 2 ? ticks
-      set m replace-item position ? m m temprecord
-      let msg (list item 0 temprecord who bounding-box item 1 temprecord item 2 temprecord)
-      set history lput msg history
-      broadcast fput "AEXT" msg
-      ]
-    ]
+  close-inactive-records
 end
 
 ;; Move object (based on modified correlated random walk)
@@ -274,9 +288,9 @@ to-report CDC-dir [reference target]
   report cdc
 end
 
-to-report is-old [record]
-  foreach history [
-    if item 0 ? = item 0 record and item 1 ? = item 1 record and item 3 ? = item 3 record and item 4 ? = item 4 record [ report true ] 
+to-report is-old [its-history record]
+  foreach its-history [
+    if item 0 ? = item 0 record and item 1 ? = item 1 record and item 3 ? = item 3 record [ report true ] 
     ]
   report false
 end
@@ -288,8 +302,32 @@ to-report has-record [obj-id]
   report false
 end
 
-to-report recent-record [obj-id]
-  report last sort-by [item 3 ?1 < item 3 ?2] (filter [item 0 ? = obj-id] history)
+to-report recent-record [its-history]
+  report last sort-by [item 3 ?1 < item 3 ?2] its-history
+end
+
+to-report history-location [obj-id]
+  let index 0
+  foreach history [
+    if first first ? = obj-id [ report index ]
+    set index index + 1
+    ]
+  report -1
+end
+
+to display-history
+  clear-output
+  output-print "object-ID   mote-ID  entering-TIME"
+  foreach history [
+    foreach ? [
+      output-type first ?
+      output-type "          "
+      output-type item 1 ?
+      output-type "          "
+      output-print last ?
+    ]
+    output-print " "
+    ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -365,13 +403,13 @@ NIL
 1
 
 SWITCH
-15
-280
-150
-313
+10
+110
+210
+143
 trackmsg
 trackmsg
-1
+0
 1
 -1000
 
@@ -426,10 +464,10 @@ ObjNo
 Number
 
 SWITCH
-15
-315
-150
-348
+10
+145
+210
+178
 show-links
 show-links
 1
@@ -437,10 +475,10 @@ show-links
 -1000
 
 SWITCH
-15
-350
-150
-383
+10
+180
+210
+213
 show-tails
 show-tails
 0
@@ -448,10 +486,10 @@ show-tails
 -1000
 
 INPUTBOX
-15
-385
-95
-445
+130
+220
+210
+280
 tail-width
 3
 1
@@ -459,14 +497,65 @@ tail-width
 Number
 
 CHOOSER
-15
-235
-153
-280
+10
+220
+110
+265
 MoteLabel
 MoteLabel
 "none" "mote id" "m" "zr"
 3
+
+OUTPUT
+10
+460
+300
+640
+12
+
+MONITOR
+15
+300
+97
+345
+sent length
+sent-length-msg-totals
+17
+1
+11
+
+MONITOR
+110
+300
+202
+345
+sent number
+sent-number-msg-totals
+17
+1
+11
+
+MONITOR
+15
+355
+97
+400
+recv length
+recv-length-msg-totals
+17
+1
+11
+
+MONITOR
+110
+355
+202
+400
+recv number
+recv-number-msg-totals
+17
+1
+11
 
 @#$#@#$#@
 ## PROTOCOL
