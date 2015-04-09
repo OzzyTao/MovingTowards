@@ -31,6 +31,7 @@ to initialize
   ;; store the info of z-zone in a global variable
   set-target-bounding-box
   create-udg
+  create-gg
   ;create-tree
   ask motes [ become "INIT"]
   ask one-of motes [ become "INIZ" ]
@@ -39,14 +40,7 @@ to initialize
     set m [] 
     set history []
     ]
-  ;ask motes [
-   ; set m []
-   ; ;set shape "sensor"
-   ; ;calculate dir(me,Z), store in zr, use me as a reference
-   ; set zr CDC-dir targetzone-boundingbox bounding-box
-   ; become "IDLE"
-  ;]
-  
+    
   reset-ticks
 end
 
@@ -92,9 +86,12 @@ to step_IDLE
   if has-message "AEXT" [
     let msg received "AEXT"
     let record but-first msg
-    if not is-old record [
+    let location history-location record-object-id record
+    ifelse location < 0 [
       set history lput record history
-      broadcast msg
+      ]
+    [
+      set history replace-item location history record
       ]
     ]
   
@@ -114,27 +111,26 @@ to step_IDLE
       set temprecord replace-item 0 temprecord [who] of ?
       set temprecord replace-item 1 temprecord ticks
       set m lput temprecord m
-      if has-record item 0 temprecord [
-        let previous recent-record item 0 temprecord
+      let location history-location first temprecord
+      let its-history []
+      if location >= 0 [
+        set its-history item location history
+        set history remove-item location history
+        let previous recent-record its-history
         let predir CDC-dir bounding-box (item 2 previous)
         if not empty? (filter [member? ? zr] predir) [
           print "moving towards"
           ]
         ]
+      
+      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
+      set its-history lput msg its-history
+      display-message its-history
+      broadcast fput "AEXT" its-history
       ]
     ]
-  ;; update history table to finish open records when corresponding objects cannot be sensed
-  foreach filter [ item 2 ? = "NULL" ] m [
-    let tempobj object item 0 ?
-    if distance tempobj > s [
-      ;; when an exiting event is detected
-      let temprecord replace-item 2 ? ticks
-      set m replace-item position ? m m temprecord
-      let msg (list item 0 temprecord who bounding-box item 1 temprecord item 2 temprecord)
-      set history lput msg history
-      broadcast fput "AEXT" msg
-      ]
-    ]
+  ;; update m table to finish open records when corresponding objects cannot be sensed
+  close-inactive-records
 end
 
 ;; Move object (based on modified correlated random walk)
@@ -288,8 +284,40 @@ to-report has-record [obj-id]
   report false
 end
 
-to-report recent-record [obj-id]
-  report last sort-by [item 3 ?1 < item 3 ?2] (filter [item 0 ? = obj-id] history)
+to-report recent-record [its-history]
+  report last sort-by [item 3 ?1 < item 3 ?2] its-history
+end
+
+to-report record-object-id [recordlist]
+  report first first recordlist
+end
+
+to-report history-location [obj-id]
+  let index 0
+  foreach history [
+    if first first ? = obj-id [ report index ]
+    set index index + 1
+    ]
+  report -1
+end
+
+to-report history-of-object [obj-id]
+  foreach history [
+    if first first ? = obj-id [ report ? ]
+    ]
+  report -1
+end
+
+to display-message [its-history] 
+  clear-output
+  output-print "obj-ID   mote-ID  entering-TIME"
+  foreach its-history [ 
+    output-type first ? 
+    output-type "         "
+    output-type item 1 ?
+    output-type "         "
+    output-print last ?
+     ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -371,7 +399,7 @@ SWITCH
 313
 trackmsg
 trackmsg
-1
+0
 1
 -1000
 
@@ -466,7 +494,58 @@ CHOOSER
 MoteLabel
 MoteLabel
 "none" "mote id" "m" "zr"
-3
+1
+
+OUTPUT
+15
+465
+290
+665
+12
+
+MONITOR
+10
+105
+92
+150
+sent length
+sent-length-msg-totals
+17
+1
+11
+
+MONITOR
+90
+105
+170
+150
+sent number
+sent-number-msg-totals
+17
+1
+11
+
+MONITOR
+10
+150
+92
+195
+recv length
+recv-length-msg-totals
+17
+1
+11
+
+MONITOR
+90
+150
+170
+195
+recv number
+recv-number-msg-totals
+17
+1
+11
 
 @#$#@#$#@
 ## PROTOCOL
