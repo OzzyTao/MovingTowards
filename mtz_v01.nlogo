@@ -2,6 +2,7 @@
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
 motes-own [m zr history]
+;test
 
 ;; Define a new breed of turtle called motes (i.e. moving objects)
 breed [objects object]
@@ -670,7 +671,7 @@ true
 Circle -7500403 true true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.0.1
+NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
