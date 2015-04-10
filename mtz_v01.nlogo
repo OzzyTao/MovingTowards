@@ -5,7 +5,8 @@ motes-own [m zr history]
 
 ;; Define a new breed of turtle called motes (i.e. moving objects)
 breed [objects object]
-
+;; store previous distance to the target zone for validation purpose
+objects-own [predis]
 ;; anchor vertices for target zone
 breed [tzonevertices tzonevertex]
 ;; bounding box is represented as list of cor: [top left bottom right]
@@ -39,6 +40,11 @@ to initialize
   ask motes [ 
     set m [] 
     set history []
+    set zr []
+    ]
+  
+  ask objects [
+    set predis 0
     ]
     
   reset-ticks
@@ -86,7 +92,7 @@ to step_IDLE
   if has-message "AEXT" [
     let msg received "AEXT"
     let record but-first msg
-    let location history-location record-object-id record
+    let location history-location (first record)
     ifelse location < 0 [
       set history lput record history
       ]
@@ -112,21 +118,28 @@ to step_IDLE
       set temprecord replace-item 1 temprecord ticks
       set m lput temprecord m
       let location history-location first temprecord
+      let times 0   ;;keep track number of consecutive "moving towards"
       let its-history []
       if location >= 0 [
         set its-history item location history
-        set history remove-item location history
-        let previous recent-record its-history
-        let predir CDC-dir bounding-box (item 2 previous)
+        let predir CDC-dir bounding-box (item 2 its-history)
         if not empty? (filter [member? ? zr] predir) [
+          set times last its-history + 1
+          type times
           print "moving towards"
           ]
         ]
-      
-      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
-      set its-history lput msg its-history
-      display-message its-history
-      broadcast fput "AEXT" its-history
+
+      let msg (list item 0 temprecord who bounding-box item 1 temprecord times)
+      ifelse location >= 0 [
+        set history replace-item location history msg
+        ] 
+      [
+        set history lput msg history
+        ]
+      display-message msg
+      broadcast fput "AEXT" msg
+      ask objects [report-true-dir]
       ]
     ]
   ;; update m table to finish open records when corresponding objects cannot be sensed
@@ -288,14 +301,11 @@ to-report recent-record [its-history]
   report last sort-by [item 3 ?1 < item 3 ?2] its-history
 end
 
-to-report record-object-id [recordlist]
-  report first first recordlist
-end
 
 to-report history-location [obj-id]
   let index 0
   foreach history [
-    if first first ? = obj-id [ report index ]
+    if first ? = obj-id [ report index ]
     set index index + 1
     ]
   report -1
@@ -303,7 +313,7 @@ end
 
 to-report history-of-object [obj-id]
   foreach history [
-    if first first ? = obj-id [ report ? ]
+    if first ? = obj-id [ report ? ]
     ]
   report -1
 end
@@ -311,13 +321,65 @@ end
 to display-message [its-history] 
   clear-output
   output-print "obj-ID   mote-ID  entering-TIME"
-  foreach its-history [ 
-    output-type first ? 
+    output-type first its-history
     output-type "         "
-    output-type item 1 ?
+    output-type item 1 its-history
     output-type "         "
-    output-print last ?
-     ]
+    output-print item 3 its-history
+end
+
+to-report point-region-distance [point boundingbox]
+  let topcor item 0 boundingbox
+  let leftcor item 1 boundingbox
+  let bottomcor item 2 boundingbox
+  let rightcor item 3 boundingbox
+  let thisx first point
+  let thisy last point
+  if thisx >= leftcor and thisx <= rightcor and thisy >= bottomcor and thisy <= topcor [
+    report 0
+    ]
+  if thisx >= leftcor and thisx <= rightcor [
+    ifelse thisy > topcor [
+      report thisy - topcor
+      ]
+    [
+      report bottomcor - thisy
+      ]
+    ]
+  if thisy >= bottomcor and thisy <= topcor [
+    ifelse thisx > rightcor [
+      report thisx - rightcor
+      ]
+    [
+      report leftcor - thisx
+      ]
+    ]
+  let deltax 0
+  let deltay 0
+  ifelse thisx < leftcor [
+    set deltax thisx - leftcor
+    ]
+  [
+    set deltax thisx - rightcor
+    ]
+  ifelse thisy < bottomcor [
+    set deltay thisy - bottomcor
+    ]
+  [
+    set deltay thisy - topcor
+    ]
+  report sqrt (deltax ^ 2 + deltay ^ 2)
+end
+
+to report-true-dir
+  let currentdis point-region-distance (list xcor ycor) targetzone-boundingbox
+  if currentdis < predis [
+    type "Object "
+    type self
+    type " "
+    print "True moving towards"
+    ]
+  set predis currentdis
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -353,7 +415,7 @@ INPUTBOX
 60
 105
 Netsize
-60
+100
 1
 0
 Number
