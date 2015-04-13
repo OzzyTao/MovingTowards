@@ -513,7 +513,6 @@ to adjust-mote-grid [bbox]
   ask item 6 motegridanchor-list [setxy rightcor max-pycor]
   ask item 7 motegridanchor-list [setxy leftcor max-pycor]
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 220
@@ -743,20 +742,20 @@ recv-number-msg-totals
 11
 
 CHOOSER
-640
-10
-780
-55
+15
+455
+155
+500
 Seed
 Seed
 "none" "random" "manual"
 1
 
 INPUTBOX
-640
-55
-780
-115
+15
+500
+155
+560
 current-seed
 -2058483719
 1
