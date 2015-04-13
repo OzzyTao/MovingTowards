@@ -169,11 +169,17 @@ end
 
 ;; Move object (based on modified correlated random walk)
 to move-objects
+  if move-type = "Simple Linear" [
+    ask objects [
+      fd 1
+    ]
+  ]
+  if move-type = "CRW" [
     ask objects [
       rt random-normal 0 15 ;; Change the heading based on Gaussian distribution with standard deviation of 15 degrees
       fd 1
-      ;fd 0.1
     ]
+  ]
 end
 
 ;; Assign labels to motes based on the MoteLable dropdown list
@@ -748,6 +754,37 @@ recv-number-msg-totals
 1
 11
 
+CHOOSER
+15
+650
+155
+695
+Seed
+Seed
+"none" "random" "manual"
+1
+
+INPUTBOX
+15
+695
+155
+755
+current-seed
+-1995642726
+1
+0
+Number
+
+CHOOSER
+15
+765
+155
+810
+move-type
+move-type
+"Simple Linear" "CRW"
+0
+
 @#$#@#$#@
 ## PROTOCOL
 
@@ -815,7 +852,7 @@ Circle -7500403 false true 0 0 300
 Rectangle -7500403 true true 135 135 165 165
 
 @#$#@#$#@
-NetLogo 5.0.1
+NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
