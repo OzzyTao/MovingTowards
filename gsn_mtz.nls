@@ -42,9 +42,8 @@ to setup
     set msghear [] ;; Clear the list of messages received    
   ]
   ask objects [
-    set size (world-width / 21) ;; Size of mote is proportional to the world size
-    setxy random-xcor random-ycor ;; Every mote has a random position
-    set heading 0 ;; Making sure the mote icons aren't rotated
+    set size (world-width / 21)
+    setxy random-xcor random-ycor
   ]
   
   ask patches [
