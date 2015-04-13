@@ -18,6 +18,13 @@ patches-own [region height]
 to setup
   clear-all ;; Clear the world
   reset-ticks
+  ;; Options to use random seed in setup, depending on interface drop-down (and unput box) selection:
+  if Seed = "none" [] ;; Don't use seed
+  if Seed = "random" [  ;; Generate new random seed and use this
+    set current-seed new-seed
+    random-seed current-seed
+  ]
+  if Seed = "manual" [random-seed current-seed] ;; Use a previously generated random seed
   create-motes netsize
   create-objects ObjNo
   ask motes [

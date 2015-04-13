@@ -557,6 +557,27 @@ recv-number-msg-totals
 1
 11
 
+CHOOSER
+15
+650
+155
+695
+Seed
+Seed
+"none" "random" "manual"
+1
+
+INPUTBOX
+15
+695
+155
+755
+current-seed
+1663316487
+1
+0
+Number
+
 @#$#@#$#@
 ## PROTOCOL
 
@@ -618,7 +639,7 @@ true
 Circle -7500403 true true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.0.1
+NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
