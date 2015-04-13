@@ -9,8 +9,14 @@ breed [objects object]
 objects-own [predis]
 ;; anchor vertices for target zone
 breed [tzonevertices tzonevertex]
+;; anchor vertices for grid
+breed [gridpoints gridpoint]
+undirected-link-breed [gridlines gridline]
+
+breed [motegridpoints motegridpoint]
+undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox]
+globals [targetzone-boundingbox motegridanchor-list]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -31,6 +37,10 @@ to initialize
     ]
   ;; store the info of z-zone in a global variable
   set-target-bounding-box
+  ;; set grid for z-zone
+  create-grid targetzone-boundingbox
+  create-mote-grid
+  
   create-udg
   create-gg
   ;create-tree
@@ -187,7 +197,8 @@ to highlight-sensing-range
    ; set pcolor yellow
     ;]
   ;set size s + world-width / 21
-  set color green
+  set shape "active_sensor"
+  adjust-mote-grid bounding-box
 end
 
 to clear-sensing-range
@@ -195,6 +206,7 @@ to clear-sensing-range
    ; set pcolor white
     ;]
   ;set size world-width / 21
+  set shape "sensor"
   set color 86
 end
 
@@ -381,15 +393,135 @@ to report-true-dir
     ]
   set predis currentdis
 end
+
+to create-grid [bbox]
+  let topcor item 0 bbox
+  let leftcor item 1 bbox
+  let bottomcor item 2 bbox
+  let rightcor item 3 bbox
+  let previous 0
+  create-gridpoints 1 [
+    setxy min-pxcor topcor
+    set previous self]
+  create-gridpoints 1 [
+    setxy max-pxcor topcor
+    create-gridline-with previous
+    ]
+  create-gridpoints 1 [
+    setxy min-pxcor bottomcor
+    set previous self
+    ]
+  create-gridpoints 1 [
+    setxy max-pxcor bottomcor
+    create-gridline-with previous
+    ]
+  create-gridpoints 1 [
+    setxy leftcor min-pycor
+    set previous self
+    ]
+  create-gridpoints 1 [
+    setxy leftcor max-pycor
+    create-gridline-with previous
+    ]
+  create-gridpoints 1 [
+    setxy rightcor min-pycor
+    set previous self
+    ]
+  create-gridpoints 1 [
+    setxy rightcor max-pycor
+    create-gridline-with previous
+    ]
+  ask gridlines [
+    set shape "gridline"
+    set color red
+    ]
+end
+
+to create-mote-grid
+  let previous 0
+  let xmintop 0
+  let xminbottom 0
+  let leftymin 0
+  let rightymin 0
+  let xmaxbottom 0
+  let xmaxtop 0
+  let rightymax 0
+  let leftymax 0
+  create-motegridpoints 1 [
+    setxy min-pxcor min-pycor
+    set previous self
+    set xmintop self
+    ]
+  create-motegridpoints 1 [
+    setxy max-pxcor min-pycor
+    create-motegridline-with previous
+    set xmaxtop self
+    ]
+  create-motegridpoints 1 [
+    setxy min-pxcor min-pycor
+    set previous self
+    set xminbottom self
+    ]
+  create-motegridpoints 1 [
+    setxy max-pxcor min-pycor
+    create-motegridline-with previous
+    set xmaxbottom self
+    ]
+  create-motegridpoints 1 [
+    setxy min-pxcor min-pycor
+    set previous self
+    set leftymin self
+    ]
+  create-motegridpoints 1 [
+    setxy min-pxcor max-pycor
+    create-motegridline-with previous
+    set leftymax self
+    ]
+  create-motegridpoints 1 [
+    setxy max-pxcor min-pycor
+    set previous self
+    set rightymin self
+    ]
+  create-motegridpoints 1 [
+    setxy max-pxcor max-pycor
+    create-motegridline-with previous
+    set rightymax self
+    ] 
+  ask motegridlines [
+    set shape "gridline"
+    set color green
+    ]
+  set motegridanchor-list (list xmintop xminbottom leftymin rightymin xmaxbottom xmaxtop rightymax leftymax) 
+end
+
+to adjust-mote-grid [bbox]
+  let topcor item 0 bbox
+  if topcor > max-pycor [set topcor max-pycor]
+  let leftcor item 1 bbox
+  if leftcor < min-pxcor [set topcor max-pxcor]
+  let bottomcor item 2 bbox
+  if bottomcor < min-pycor [set bottomcor min-pycor]
+  let rightcor item 3 bbox
+  if rightcor > max-pxcor [set rightcor max-pxcor]
+  ask item 0 motegridanchor-list [setxy min-pxcor topcor]
+  ask item 1 motegridanchor-list [setxy min-pxcor bottomcor]
+  ask item 2 motegridanchor-list [setxy leftcor min-pycor]
+  ask item 3 motegridanchor-list [setxy rightcor min-pycor]
+  ask item 4 motegridanchor-list [setxy max-pxcor bottomcor]
+  ask item 5 motegridanchor-list [setxy max-pxcor topcor]
+  ask item 6 motegridanchor-list [setxy rightcor max-pycor]
+  ask item 7 motegridanchor-list [setxy leftcor max-pycor]
+end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 220
 10
-632
-443
+853
+664
 100
 100
-2.0
+3.1
 1
 12
 1
@@ -415,7 +547,7 @@ INPUTBOX
 60
 105
 Netsize
-100
+200
 1
 0
 Number
@@ -559,10 +691,10 @@ MoteLabel
 1
 
 OUTPUT
-15
-465
-290
-665
+530
+685
+805
+885
 12
 
 MONITOR
@@ -642,6 +774,11 @@ true
 0
 Polygon -7500403 true true 150 5 40 250 150 205 260 250
 
+active_sensor
+true
+0
+Circle -13840069 true false 0 0 300
+
 fish
 true
 0
@@ -667,7 +804,8 @@ Polygon -7500403 true true 76 105 64 119 57 137 55 158 60 175 71 191 82 183 73 1
 sensor
 true
 0
-Circle -7500403 true true 0 0 300
+Circle -7500403 false true 0 0 300
+Rectangle -7500403 true true 135 135 165 165
 
 @#$#@#$#@
 NetLogo 5.0.1
@@ -901,6 +1039,17 @@ default
 0.0
 -0.2 0 0.0 1.0
 0.0 1 1.0 0.0
+0.2 0 0.0 1.0
+link direction
+true
+0
+Line -7500403 true 150 150 90 180
+Line -7500403 true 150 150 210 180
+
+gridline
+0.0
+-0.2 0 0.0 1.0
+0.0 1 2.0 2.0
 0.2 0 0.0 1.0
 link direction
 true
