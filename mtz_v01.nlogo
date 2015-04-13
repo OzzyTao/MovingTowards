@@ -513,16 +513,15 @@ to adjust-mote-grid [bbox]
   ask item 6 motegridanchor-list [setxy rightcor max-pycor]
   ask item 7 motegridanchor-list [setxy leftcor max-pycor]
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-220
-10
-853
-664
+245
+15
+848
+639
 100
 100
-3.1
+2.95025
 1
 12
 1
@@ -743,22 +742,22 @@ recv-number-msg-totals
 11
 
 CHOOSER
-640
-10
-780
-55
+5
+445
+145
+490
 Seed
 Seed
 "none" "random" "manual"
 1
 
 INPUTBOX
-640
-55
-780
-115
+5
+490
+145
+550
 current-seed
--2058483719
+1744610637
 1
 0
 Number
@@ -830,7 +829,7 @@ Circle -7500403 false true 0 0 300
 Rectangle -7500403 true true 135 135 165 165
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
