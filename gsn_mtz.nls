@@ -14,6 +14,8 @@ turtles-own [messages state parent children msgsent msgrecv msghear]
 ;; Each patch can store the local variable height which will be the sensed value of any mote in the patch
 patches-own [region height] 
 
+undirected-link-breed [comlinks comlink]
+
 ;; Runs all the tasks common to every algorithm for setting up the world
 to setup
   clear-all ;; Clear the world
@@ -120,7 +122,7 @@ end
 
 ;; Broadcasting messages involves sending them to all link neighbors
 to broadcast [message]
-  ask link-neighbors [receive message]
+  ask comlink-neighbors [receive message]
   if trackmsg [
     update-msg-count "SENT" message
   ]
@@ -333,7 +335,7 @@ to-report connected-component [mymotes]
     let v item 0 processing
     set processing remove-item 0 processing
     set visited fput v visited
-    ask mote v [ask link-neighbors [if not member? who visited and member? self mymotes [set processing fput who processing]]]
+    ask mote v [ask comlink-neighbors [if not member? who visited and member? self mymotes [set processing fput who processing]]]
     set processing remove-duplicates processing
   ]
   
@@ -366,7 +368,7 @@ end
 to create-udg
   foreach sort motes [
     ask ? [
-      foreach sort motes [if distance ? > 0 and distance ? < c [create-link-with ?]]
+      foreach sort motes [if distance ? > 0 and distance ? < c [create-comlink-with ?]]
     ] ;; Distance needs to be greater than 0 as a mote can't make a link with itself
   ]
 end
@@ -386,16 +388,16 @@ to create-planar-graph [isgg]
   foreach sort motes [
     ask ? [ ;; Ask each mote
       let u ?
-      foreach sort link-neighbors [ ;; For every neighbor of mote u
+      foreach sort comlink-neighbors [ ;; For every neighbor of mote u
         let v ? ;; Let the neighboring mote be mote v
         let distuv distance v ;; Distance between motes u and v
-        ifelse all? link-neighbors [ check-planarity u v distuv isgg = true ]
+        ifelse all? comlink-neighbors [ check-planarity u v distuv isgg = true ]
           []  ;; If all neighbors of mote v meet the GG/RNG conditions, do nothing
-          [ask link-with v [set color red]] ;; If any neighbors don't, mark link for deletion
+          [ask comlink-with v [set color red]] ;; If any neighbors don't, mark link for deletion
       ]
     ]
   ]
-  ask links with [color = red] [die] ;; Delete all red links
+  ask comlinks with [color = red] [die] ;; Delete all red links
 end
 
 ;; Reports true if the network is planar.
@@ -429,15 +431,15 @@ to create-tree
   ]
 
   ;; While any tree motes have neighbors that are not part of the tree
-  while [any? motes with [state = "TREE" and any? link-neighbors with [state != "TREE"]]] [
+  while [any? motes with [state = "TREE" and any? comlink-neighbors with [state != "TREE"]]] [
     ask one-of motes with [state = "TREE"] [ ;; Ask one of these tree motes
       let t1 who ;; t1 is the mote id of every neighbor that's not part of the tree
-      ask link-neighbors with [state != "TREE"] [
+      ask comlink-neighbors with [state != "TREE"] [
         let t2 who ;; t2 is the mote id of every neighbor that is part of the tree
-        ask link-neighbors with [state = "TREE"] [ ;; Kill links with all neighbors
-          ask link-with mote t2 [die]              ;; that are part of the tree
+        ask comlink-neighbors with [state = "TREE"] [ ;; Kill links with all neighbors
+          ask comlink-with mote t2 [die]              ;; that are part of the tree
         ]
-        create-link-with mote t1 ;; Create link with all neighbors that are not
+        create-comlink-with mote t1 ;; Create link with all neighbors that are not
                                  ;; part of the tree
         become "TREE" ;; Set the neighbor motes state to tree
         set parent t1 ;; Set the neighbor motes parent id
@@ -445,7 +447,7 @@ to create-tree
     ]
   ]
   ask motes [
-    set children [who] of link-neighbors ;; Adds all link neighbors to list
+    set children [who] of comlink-neighbors ;; Adds all link neighbors to list
     foreach children [
       if ? = parent [
         set children remove ? children ;; Removes parent from children list
@@ -456,7 +458,7 @@ end
 
 ;; Determines the next neighbor in the anti-clockwise direction for any given neighbor
 to-report cyc [id]
-  let nbr [who] of link-neighbors
+  let nbr [who] of comlink-neighbors
   ifelse member? id nbr [ ;; Making sure that id is a neighbor of mote
     let max.ang 0
 
