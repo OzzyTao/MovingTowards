@@ -610,6 +610,27 @@ recv-number-msg-totals
 1
 11
 
+CHOOSER
+640
+10
+780
+55
+Seed
+Seed
+"none" "random" "manual"
+1
+
+INPUTBOX
+640
+55
+780
+115
+current-seed
+-2058483719
+1
+0
+Number
+
 @#$#@#$#@
 ## PROTOCOL
 
