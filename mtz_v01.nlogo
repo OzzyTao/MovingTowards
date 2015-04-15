@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list]
+globals [targetzone-boundingbox motegridanchor-list global-history]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -55,13 +55,8 @@ to initialize
   ask objects [
     set predis 0
     ]
-  ;ask motes [
-   ; set m []
-   ; ;set shape "sensor"
-   ; ;calculate dir(me,Z), store in zr, use me as a reference
-   ; set zr CDC-dir targetzone-boundingbox bounding-box
-   ; become "IDLE"
-  ;]
+  
+  set global-history []
   
   reset-ticks
 end
@@ -159,6 +154,8 @@ to step_IDLE
       [
         set history lput its-history history
         ]
+      
+      update-global-history msg
       broadcast fput "AEXT" msg
       display-history
       ]
@@ -526,6 +523,26 @@ to adjust-mote-grid [bbox]
   ask item 6 motegridanchor-list [setxy rightcor max-pycor]
   ask item 7 motegridanchor-list [setxy leftcor max-pycor]
 end
+
+to update-global-history [record]
+  let obj-id first record
+  let location -1
+  let index 0
+  foreach global-history [
+    if first first ? = obj-id [set location index]
+    set index index + 1
+    ]
+  ifelse location < 0 [
+    set global-history lput (lput record []) global-history
+    ]
+  [
+    let its-history item location global-history
+    if not is-old its-history record [
+        set its-history lput record its-history
+        set global-history replace-item location global-history its-history
+        ] 
+    ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -704,10 +721,10 @@ MoteLabel
 1
 
 OUTPUT
-20
-575
-310
-755
+15
+425
+305
+605
 12
 
 MONITOR
@@ -770,7 +787,7 @@ INPUTBOX
 155
 755
 current-seed
--1995642726
+342215716
 1
 0
 Number
@@ -783,7 +800,7 @@ CHOOSER
 move-type
 move-type
 "Simple Linear" "CRW"
-0
+1
 
 @#$#@#$#@
 ## PROTOCOL
@@ -852,7 +869,7 @@ Circle -7500403 false true 0 0 300
 Rectangle -7500403 true true 135 135 165 165
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
