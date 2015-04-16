@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -57,6 +57,13 @@ to initialize
     ]
   
   set global-history []
+  
+  set filename "../mtz-tests/flooding-cdc.csv"
+  file-close-all
+  if file-exists? filename [file-delete filename]
+  file-open filename
+  file-print "Object, ticks, decentralized, centralized"
+  print "Object, ticks, decentralized, centralized"
   
   reset-ticks
 end
@@ -137,12 +144,20 @@ to step_IDLE
       let location history-location first temprecord
       let its-history []
       
+      set testresultline []
+      
       if location >= 0 [
+        set testresultline lput "," (lput item 0 temprecord testresultline)
+        set testresultline lput "," (lput item 1 temprecord testresultline)
+        
         set its-history item location history
         let previous recent-record its-history
         let predir CDC-dir bounding-box (item 2 previous)
-        if not empty? (filter [member? ? zr] predir) [
-          print "moving towards"
+        ifelse not empty? (filter [member? ? zr] predir) [
+          set testresultline lput "," (lput TRUE testresultline)
+          ]
+        [
+          set testresultline lput "," (lput FALSE testresultline)
           ]
         ]
       
@@ -156,6 +171,8 @@ to step_IDLE
         ]
       
       update-global-history msg
+      centralized-cdc-validation first msg
+      log-results testresultline
       broadcast fput "AEXT" msg
       display-history
       ]
@@ -543,6 +560,50 @@ to update-global-history [record]
         ] 
     ]
 end
+
+to centralized-cdc-validation [obj-id]
+  let location -1
+  let index 0
+  foreach global-history [
+    if first first ? = obj-id [set location index]
+    set index index + 1
+    ]
+  if location >= 0 [
+    let its-history item location global-history
+    if length its-history > 1 [
+      let currentBBOX item 2 (last its-history)
+      let previousBBOX item 2 (last but-last its-history)
+      let predir CDC-dir currentBBOX previousBBOX
+      let curdir CDC-dir targetzone-boundingbox currentBBOX
+      ifelse not empty? (filter [member? ? predir] curdir) [
+        set testresultline lput TRUE testresultline
+        ] 
+      [
+        set testresultline lput FALSE testresultline
+        ]
+      ]
+    ]
+end
+
+to log-results [logline]
+  if not empty? logline [
+  ifelse output-to-file [
+    file-open filename
+    foreach logline [
+      file-type ?
+      ]
+    file-print ""
+    ]
+  [
+    file-close-all
+    foreach logline [
+      type ?
+      ]
+    print ""
+    ] 
+  ]
+end
+  
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -787,7 +848,7 @@ INPUTBOX
 155
 755
 current-seed
-342215716
+1578925441
 1
 0
 Number
@@ -801,6 +862,17 @@ move-type
 move-type
 "Simple Linear" "CRW"
 1
+
+SWITCH
+15
+610
+157
+643
+output-to-file
+output-to-file
+1
+1
+-1000
 
 @#$#@#$#@
 ## PROTOCOL
