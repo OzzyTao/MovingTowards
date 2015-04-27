@@ -1,7 +1,7 @@
  __includes["./gsn_mtz.nls" "./env_mtz.nls"]
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
-motes-own [m zr history]
+motes-own [m zr history neighbourhood]
 
 ;; Define a new breed of turtle called motes (i.e. moving objects)
 breed [objects object]
@@ -50,6 +50,7 @@ to initialize
     set m [] 
     set history []
     set zr []
+    set neighbourhood []
     ]
   
   ask objects [
@@ -603,6 +604,129 @@ to log-results [logline]
     ] 
   ]
 end
+
+
+to-report is-surrounded 
+  let connectedcomponents []
+  let unaffectedcomponents []
+  let peddingcomponents []
+  let index 0 
+  foreach neighbourhood [
+    let newrecord lput included-angle ? ?
+    set neighbourhood replace-item index newrecord neighbourhood
+    set index index + 1
+  ]
+  set neighbourhood sort-by [ last ?1 < last ?2 ] neighbourhood
+  foreach neighbourhood [
+    let disk ?
+    ifelse empty? connectedcomponents [
+      set connectedcomponents lput (list disk) connectedcomponents
+    ][
+      foreach connectedcomponents [
+        let result disk-component-relation disk ?
+        if result = "surrounded" [
+          report TRUE
+        ]
+        ifelse result = "connected" [
+          set peddingcomponents lput (lput disk ?) peddingcomponents
+        ][
+          set unaffectedcomponents lput ? unaffectedcomponents
+        ]
+      ]
+      ifelse empty? peddingcomponents [
+        set connectedcomponents lput (list disk) unaffectedcomponents
+        set unaffectedcomponents []
+      ][
+        set connectedcomponents lput (combine-connected-components peddingcomponents) unaffectedcomponents
+        set unaffectedcomponents []
+        set peddingcomponents []
+      ]
+    ]
+  ]
+  report FALSE
+end
+
+to-report included-angle [neighbour-disk]
+  let deltax (item 1 neighbour-disk) - xcor
+  let deltay (item 2 neighbour-disk) - ycor
+  report atan deltax deltay
+end
+
+to-report is-connected [diska diskb]
+  let deltax (item 1 diska) - (item 1 diskb)
+  let deltay (item 2 diska) - (item 2 diskb)
+  ifelse sqrt (deltax ^ 2 + deltay ^ 2) <= (s + s)[
+    report TRUE
+  ][
+    report FALSE
+  ]
+end
+
+to-report combine-connected-components [componentlist]
+  let resultcomponent []
+  while [length componentlist > 0] [
+    let smallestvalue 400
+    let smallestindex 0
+    let tindex 0
+    foreach componentlist [
+      let currentvalue item 3 ?
+      if currentvalue < smallestvalue [
+        set smallestvalue currentvalue
+        set smallestindex tindex
+      ]
+      set tindex tindex + 1
+    ]
+
+    let thecomponent (item smallestindex componentlist)
+    set resultcomponent lput (first thecomponent) resultcomponent
+    ifelse length thecomponent = 1 [
+      set componentlist remove-item smallestindex componentlist
+      report resultcomponent
+    ][
+      set componentlist replace-item smallestindex (but-first thecomponent) componentlist
+    ]
+  ]
+  report resultcomponent
+end
+
+to-report to-left [point segstart segend]
+  let sign (first segend - first segstart) * (last point - last segstart) - (last segend - last segstart) * (first point - first segstart)
+  ifelse sign > 0 [
+    report TRUE
+  ][
+    report FALSE
+  ]
+end
+
+to-report disk-component-relation [disk component]
+  let connectedtostart FALSE
+  let connectedtoend FALSE
+
+  let cxcor item 1 disk
+  let cycor item 2 disk
+  foreach component [
+    let currentcenterx item 1 ?
+    let currentcentery item 2 ?
+    if is-connected disk ? [
+      if to-left (list xcor ycor) (list currentcenterx currentcentery) (list cxcor cycor) [
+          set connectedtoend TRUE
+        ]
+      if to-left (list xcor ycor) (list cxcor cycor) (list currentcenterx currentcentery) [
+        set connectedtostart TRUE
+      ]
+    ]
+  ]
+
+  if connectedtoend and connectedtostart [
+    report "surrounded"
+  ]
+  ifelse connectedtoend [
+    report "connected"
+  ][
+    report "not-connected"
+  ]
+end
+
   
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -848,7 +972,7 @@ INPUTBOX
 155
 755
 current-seed
-1578925441
+-543910801
 1
 0
 Number
