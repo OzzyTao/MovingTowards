@@ -40,9 +40,11 @@ to initialize
   create-grid targetzone-boundingbox
   create-mote-grid
   
-  create-udg
-  create-gg
-  ;create-tree
+  ;; network structure
+  if NetworkStructure = "UDG" [create-udg]
+  if NetworkStructure = "GG" [create-udg create-gg]
+  if NetworkStructure = "RNG" [create-udg create-rng]
+  
   ask motes [ become "INIT"]
   ask one-of motes [ become "INIZ" ]
   
@@ -89,11 +91,20 @@ to step
   if state = "INIZ" [step_INIZ stop]
   if state = "INIT" [step_INIT stop]
   if state = "IDLE" [step_IDLE stop]
+  if state = "XPNB" [step_XPNB stop]
+  if state = "WTNB" [step_WTNB stop]
+  if state = "INER" [step_INER stop]
+  if state = "BNDY" [step_BNDY stop]
 end
 
 to step_INIZ
   broadcast (list "ZBOX" targetzone-boundingbox)
-  become "IDLE"
+  ifelse communicationstrategy = "Hybird" [
+    become "XPNB"
+  ]
+  [
+    become "IDLE"
+    ]
 end
 
 to step_INIT
@@ -102,8 +113,151 @@ to step_INIT
     let zbox item 1 msg
     set zr CDC-dir zbox bounding-box
     broadcast (list "ZBOX" zbox)
-    become "IDLE"
+    ifelse communicationstrategy = "Hybird" [
+      become "XPNB"
+      ]
+    [
+      become "IDLE"
+      ]
     ]
+end
+
+to step_XPNB
+  broadcast (list "RANGE" who xcor ycor)
+  become "WTNB"
+end
+
+to step_WTNB
+  if has-message "RANGE" [
+    let msg received "RANGE"
+    let record but-first msg
+    set neighbourhood lput record neighbourhood
+    ]
+  if length neighbourhood = count comlink-neighbors [
+    ifelse is-surrounded [
+      become "INER"
+      ][
+      become "BNDY"
+      ]
+    ]
+end
+
+to step_INER 
+  ;; on receiving an entering message from neighbour
+  if has-message "OETR" [
+    let msg received "OETR"
+    let record but-first msg
+    update-record record
+    ]
+  
+  if has-message "FLOD" [
+    let msg received "FLOD"
+    let record but-first msg
+    update-record record
+    ]
+  ;; on sensing an entering event
+  let sensor self
+  let in-range-objects objects with [within-sensing-range sensor]
+  ifelse count in-range-objects > 0 [
+    highlight-sensing-range
+    ]
+  [
+    clear-sensing-range
+    ]
+  
+  foreach sort in-range-objects [
+    if which-active-record [who] of ? = -1 [
+      let temprecord [ "NULL" 0 "NULL"]
+      set temprecord replace-item 0 temprecord [who] of ?
+      set temprecord replace-item 1 temprecord ticks
+      set m lput temprecord m
+      
+      set testresultline []
+      
+      let hindex locate-record first temprecord
+      if hindex >= 0 [
+        set testresultline lput "," (lput item 0 temprecord testresultline)
+        set testresultline lput "," (lput item 1 temprecord testresultline)
+        
+        let previous item hindex history
+        let predir CDC-dir bounding-box (item 2 previous)
+        ifelse not empty? (filter [member? ? zr] predir) [
+          set testresultline lput "," (lput TRUE testresultline)
+          ]
+        [
+          set testresultline lput "," (lput FALSE testresultline)
+          ]
+        ] 
+      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
+      update-record msg
+      broadcast fput "OETR" msg
+      
+      update-global-history msg
+      centralized-cdc-validation first msg
+      log-results testresultline
+      ]
+    ]
+  close-inactive-records
+end
+
+to step_BNDY
+  if has-message "OETR" [
+    let msg received "OETR"
+    let record but-first msg
+    update-record record
+    ]
+  
+  if has-message "FLOD" [
+    let msg received "FLOD"
+    let record but-first msg
+    if not is-old history record [
+      update-record record
+      broadcast msg
+      ]
+    ]
+  ;; on sensing an entering event
+  let sensor self
+  let in-range-objects objects with [within-sensing-range sensor]
+  ifelse count in-range-objects > 0 [
+    highlight-sensing-range
+    ]
+  [
+    clear-sensing-range
+    ]
+  
+  foreach sort in-range-objects [
+    if which-active-record [who] of ? = -1 [
+      let temprecord [ "NULL" 0 "NULL"]
+      set temprecord replace-item 0 temprecord [who] of ?
+      set temprecord replace-item 1 temprecord ticks
+      set m lput temprecord m
+      
+      set testresultline []
+      
+      let hindex locate-record first temprecord
+      if hindex >= 0 [
+        set testresultline lput "," (lput item 0 temprecord testresultline)
+        set testresultline lput "," (lput item 1 temprecord testresultline)
+        
+        let previous item hindex history
+        let predir CDC-dir bounding-box (item 2 previous)
+        ifelse not empty? (filter [member? ? zr] predir) [
+          set testresultline lput "," (lput TRUE testresultline)
+          ]
+        [
+          set testresultline lput "," (lput FALSE testresultline)
+          ]
+        ] 
+      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
+      update-record msg
+      broadcast fput "FLOD" msg
+      
+      update-global-history msg
+      centralized-cdc-validation first msg
+      log-results testresultline
+      ]
+    ] 
+  close-inactive-records 
 end
 
 to step_IDLE
@@ -238,8 +392,7 @@ to clear-sensing-range
    ; set pcolor white
     ;]
   ;set size world-width / 21
-  set shape "sensor"
-  set color 86
+  become state
 end
 
 ;; report position of the open record with id of obj-id in the histroy table
@@ -329,7 +482,7 @@ end
 
 to-report is-old [its-history record]
   foreach its-history [
-    if item 0 ? = item 0 record and item 1 ? = item 1 record and item 3 ? = item 3 record [ report true ] 
+    if item 0 ? = item 0 record and item 3 ? >= item 3 record [ report true ] 
     ]
   report false
 end
@@ -527,7 +680,7 @@ to adjust-mote-grid [bbox]
   let topcor item 0 bbox
   if topcor > max-pycor [set topcor max-pycor]
   let leftcor item 1 bbox
-  if leftcor < min-pxcor [set topcor max-pxcor]
+  if leftcor < min-pxcor [set leftcor max-pxcor]
   let bottomcor item 2 bbox
   if bottomcor < min-pycor [set bottomcor min-pycor]
   let rightcor item 3 bbox
@@ -612,11 +765,11 @@ to-report is-surrounded
   let peddingcomponents []
   let index 0 
   foreach neighbourhood [
-    let newrecord lput included-angle ? ?
-    set neighbourhood replace-item index newrecord neighbourhood
+    let newrecord lput (included-angle ?) ?
+    set neighbourhood replace-item index neighbourhood newrecord
     set index index + 1
   ]
-  set neighbourhood sort-by [ last ?1 < last ?2 ] neighbourhood
+  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
   foreach neighbourhood [
     let disk ?
     ifelse empty? connectedcomponents [
@@ -669,7 +822,7 @@ to-report combine-connected-components [componentlist]
     let smallestindex 0
     let tindex 0
     foreach componentlist [
-      let currentvalue item 3 ?
+      let currentvalue item 3 first ?
       if currentvalue < smallestvalue [
         set smallestvalue currentvalue
         set smallestindex tindex
@@ -683,7 +836,7 @@ to-report combine-connected-components [componentlist]
       set componentlist remove-item smallestindex componentlist
       report resultcomponent
     ][
-      set componentlist replace-item smallestindex (but-first thecomponent) componentlist
+      set componentlist replace-item smallestindex componentlist (but-first thecomponent)
     ]
   ]
   report resultcomponent
@@ -709,10 +862,10 @@ to-report disk-component-relation [disk component]
     let currentcentery item 2 ?
     if is-connected disk ? [
       if to-left (list xcor ycor) (list currentcenterx currentcentery) (list cxcor cycor) [
-          set connectedtoend TRUE
+          set connectedtostart TRUE
         ]
       if to-left (list xcor ycor) (list cxcor cycor) (list currentcenterx currentcentery) [
-        set connectedtostart TRUE
+        set connectedtoend TRUE
       ]
     ]
   ]
@@ -727,6 +880,24 @@ to-report disk-component-relation [disk component]
   ]
 end
 
+to update-record [record]
+  let rindex locate-record first record
+  
+  ifelse rindex < 0 [
+    set history lput record history
+    ] [
+    set history replace-item rindex history record
+    ]
+end
+
+to-report locate-record [obj-id]
+  let index 0
+  foreach history [
+    if first ? = obj-id [ report index ]
+    set index index + 1
+    ]
+  report -1
+end
   
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -762,7 +933,7 @@ INPUTBOX
 60
 105
 Netsize
-200
+700
 1
 0
 Number
@@ -818,7 +989,7 @@ INPUTBOX
 160
 105
 c
-40
+20
 1
 0
 Number
@@ -903,14 +1074,14 @@ CHOOSER
 MoteLabel
 MoteLabel
 "none" "mote id" "m" "zr"
-1
+0
 
 OUTPUT
 15
 425
 305
 605
-12
+17
 
 MONITOR
 15
@@ -964,7 +1135,7 @@ CHOOSER
 Seed
 Seed
 "none" "random" "manual"
-1
+2
 
 INPUTBOX
 15
@@ -972,7 +1143,7 @@ INPUTBOX
 155
 755
 current-seed
--543910801
+-640111348
 1
 0
 Number
@@ -997,6 +1168,26 @@ output-to-file
 1
 1
 -1000
+
+CHOOSER
+175
+615
+313
+660
+NetworkStructure
+NetworkStructure
+"UDG" "GG" "RNG"
+0
+
+CHOOSER
+175
+670
+347
+715
+CommunicationStrategy
+CommunicationStrategy
+"Flooding" "Hybird"
+1
 
 @#$#@#$#@
 ## PROTOCOL

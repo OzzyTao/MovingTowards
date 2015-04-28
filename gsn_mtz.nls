@@ -72,6 +72,8 @@ to become [newstate]
   if state = "EVNT" or state = "GBRG" or state = "RNBR" or state = "BNDY" [
     set color 95 ;; Mid blue
   ]
+  if state = "INER" [set color red]
+  
   if state = "SEND" [
     set shape "mote_communicate"
     set color 86 ;; Light blue
