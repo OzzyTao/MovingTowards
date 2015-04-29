@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -60,6 +60,7 @@ to initialize
     ]
   
   set global-history []
+  set movement-seed current-seed
   
   set filename "../mtz-tests/flooding-cdc.csv"
   file-close-all
@@ -345,7 +346,9 @@ to move-objects
   ]
   if move-type = "CRW" [
     ask objects [
+      random-seed movement-seed
       rt random-normal 0 15 ;; Change the heading based on Gaussian distribution with standard deviation of 15 degrees
+      set movement-seed next-seed
       fd 1
     ]
   ]
@@ -899,6 +902,9 @@ to-report locate-record [obj-id]
   report -1
 end
   
+to-report next-seed
+  report (random 4294967296) - 2147483648
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -1177,7 +1183,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-0
+1
 
 CHOOSER
 175
@@ -1187,7 +1193,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybird"
-1
+0
 
 @#$#@#$#@
 ## PROTOCOL
