@@ -64,7 +64,7 @@ to become [newstate]
   set shape "sensor"
   if state = "DONE" [set color 0] ;; Black
   if state = "INIT" [set color 9.9] ;; White
-  if state = "IDLE" [set color 86] ;; Light blue
+  if state = "IDLE" or state = "IDLE_NB" or state = "IDLE_DB" [set color 86] ;; Light blue
   if state = "CHCK" [set color 104] ;; Dark blue
   if state = "PITX" [set color 45] ;; Yellow
   if state = "DEAD" or state = "PEAK" [set color 15] ;; Red

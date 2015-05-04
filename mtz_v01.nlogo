@@ -1,8 +1,8 @@
  __includes["./gsn_mtz.nls" "./env_mtz.nls"]
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
-motes-own [m zr history neighbourhood]
-
+motes-own [m zr history neighbourhood towards-neighbour similar-neighbour]
+;; history is a list of tables that each one keep records about one specific object
 ;; Define a new breed of turtle called motes (i.e. moving objects)
 breed [objects object]
 objects-own [predis]
@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -53,6 +53,8 @@ to initialize
     set history []
     set zr []
     set neighbourhood []
+    set towards-neighbour []
+    set similar-neighbour []
     ]
   
   ask objects [
@@ -61,6 +63,8 @@ to initialize
   
   set global-history []
   set movement-seed current-seed
+  set interior-num 0
+  set boundary-num 0
   
   set filename "../mtz-tests/flooding-cdc.csv"
   file-close-all
@@ -75,7 +79,7 @@ end
 ;; Run the algorithm
 to go
   ask motes [step]
-  if remainder ticks 10 = 0 [ 
+  if remainder ticks 10 = 0 and ticks > 70 [ 
     move-objects
     mote-labels
     object-tails
@@ -96,15 +100,25 @@ to step
   if state = "WTNB" [step_WTNB stop]
   if state = "INER" [step_INER stop]
   if state = "BNDY" [step_BNDY stop]
+  if state = "INIT_DB" [step_INIT_DB stop]
+  if state = "WAIT_DB" [step_WAIT_DB stop]
+  if state = "IDLE_DB" [step_IDLE_DB stop]
+  if state = "IDLE_NB" [step_IDLE_NB stop]
 end
 
 to step_INIZ
   broadcast (list "ZBOX" targetzone-boundingbox)
-  ifelse communicationstrategy = "Hybird" [
+  if communicationstrategy = "Hybird" [
     become "XPNB"
   ]
-  [
+  if communicationstrategy = "Flooding" [
     become "IDLE"
+    ]
+  if communicationstrategy = "Direction-based" [
+    become "INIT_DB"
+    ]
+  if communicationstrategy = "Neighbourhood-based" [
+    become "IDLE_NB"
     ]
 end
 
@@ -112,13 +126,19 @@ to step_INIT
   if has-message "ZBOX" [
     let msg received "ZBOX"
     let zbox item 1 msg
-    set zr CDC-dir zbox bounding-box
+    set zr CDC-dir bounding-box zbox
     broadcast (list "ZBOX" zbox)
-    ifelse communicationstrategy = "Hybird" [
+    if communicationstrategy = "Hybird" [
       become "XPNB"
       ]
-    [
+    if communicationstrategy = "Flooding" [
       become "IDLE"
+      ]
+    if communicationstrategy = "Direction-based" [
+      become "INIT_DB"
+      ]
+    if communicationstrategy = "Neighbourhood-based" [
+      become "IDLE_NB"
       ]
     ]
 end
@@ -136,8 +156,10 @@ to step_WTNB
     ]
   if length neighbourhood = count comlink-neighbors [
     ifelse is-surrounded [
+      set interior-num interior-num + 1
       become "INER"
       ][
+      set boundary-num boundary-num + 1
       become "BNDY"
       ]
     ]
@@ -148,117 +170,41 @@ to step_INER
   if has-message "OETR" [
     let msg received "OETR"
     let record but-first msg
-    update-record record
+    update-record record FALSE
     ]
   
   if has-message "FLOD" [
     let msg received "FLOD"
     let record but-first msg
-    update-record record
+    update-record record FALSE
     ]
   ;; on sensing an entering event
-  let sensor self
-  let in-range-objects objects with [within-sensing-range sensor]
-  ifelse count in-range-objects > 0 [
-    highlight-sensing-range
+  let msgs on-sensing-movement FALSE
+  foreach msgs [
+    broadcast fput "OETR" ?
     ]
-  [
-    clear-sensing-range
-    ]
-  
-  foreach sort in-range-objects [
-    if which-active-record [who] of ? = -1 [
-      let temprecord [ "NULL" 0 "NULL"]
-      set temprecord replace-item 0 temprecord [who] of ?
-      set temprecord replace-item 1 temprecord ticks
-      set m lput temprecord m
-      
-      set testresultline []
-      
-      let hindex locate-record first temprecord
-      if hindex >= 0 [
-        set testresultline lput "," (lput item 0 temprecord testresultline)
-        set testresultline lput "," (lput item 1 temprecord testresultline)
-        
-        let previous item hindex history
-        let predir CDC-dir bounding-box (item 2 previous)
-        ifelse not empty? (filter [member? ? zr] predir) [
-          set testresultline lput "," (lput TRUE testresultline)
-          ]
-        [
-          set testresultline lput "," (lput FALSE testresultline)
-          ]
-        ] 
-      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
-      update-record msg
-      broadcast fput "OETR" msg
-      
-      update-global-history msg
-      centralized-cdc-validation first msg
-      log-results testresultline
-      ]
-    ]
-  close-inactive-records
 end
 
 to step_BNDY
   if has-message "OETR" [
     let msg received "OETR"
     let record but-first msg
-    update-record record
+    update-record record FALSE
     ]
   
   if has-message "FLOD" [
     let msg received "FLOD"
     let record but-first msg
-    if not is-old history record [
-      update-record record
+    if not is-old record [
+      update-record record FALSE
       broadcast msg
       ]
     ]
   ;; on sensing an entering event
-  let sensor self
-  let in-range-objects objects with [within-sensing-range sensor]
-  ifelse count in-range-objects > 0 [
-    highlight-sensing-range
+  let msgs on-sensing-movement FALSE
+  foreach msgs [
+    broadcast fput "FLOD" ?
     ]
-  [
-    clear-sensing-range
-    ]
-  
-  foreach sort in-range-objects [
-    if which-active-record [who] of ? = -1 [
-      let temprecord [ "NULL" 0 "NULL"]
-      set temprecord replace-item 0 temprecord [who] of ?
-      set temprecord replace-item 1 temprecord ticks
-      set m lput temprecord m
-      
-      set testresultline []
-      
-      let hindex locate-record first temprecord
-      if hindex >= 0 [
-        set testresultline lput "," (lput item 0 temprecord testresultline)
-        set testresultline lput "," (lput item 1 temprecord testresultline)
-        
-        let previous item hindex history
-        let predir CDC-dir bounding-box (item 2 previous)
-        ifelse not empty? (filter [member? ? zr] predir) [
-          set testresultline lput "," (lput TRUE testresultline)
-          ]
-        [
-          set testresultline lput "," (lput FALSE testresultline)
-          ]
-        ] 
-      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
-      update-record msg
-      broadcast fput "FLOD" msg
-      
-      update-global-history msg
-      centralized-cdc-validation first msg
-      log-results testresultline
-      ]
-    ] 
-  close-inactive-records 
 end
 
 to step_IDLE
@@ -273,7 +219,7 @@ to step_IDLE
       ]
     [
       let its-history item location history
-      if not is-old its-history record [
+      if not history-exists its-history record [
         set its-history lput record its-history
         set history replace-item location history its-history
         broadcast msg 
@@ -281,60 +227,59 @@ to step_IDLE
       ]
     ]
   
+  let msgs on-sensing-movement TRUE
+  foreach msgs [
+    broadcast fput "AEXT" ?
+    ]
+end
+
+;; on sensing entering events, report messages to be spreaded 
+to-report on-sensing-movement [keep-history]
+  ;; on sensing an entering event
+  let msgs []
   let sensor self
-  let in-range-objects objects with [ within-sensing-range sensor ] 
-  ;; visual effect for sensing
+  let in-range-objects objects with [within-sensing-range sensor]
   ifelse count in-range-objects > 0 [
     highlight-sensing-range
     ]
-  [ clear-sensing-range ]
+  [
+    clear-sensing-range
+    ]
   
-  ;; update history table to add new records when an object enters
   foreach sort in-range-objects [
     if which-active-record [who] of ? = -1 [
-      ;; when an entering event is detected 
-      let temprecord [ "NULL" 0 "NULL" ]
+      let temprecord [ "NULL" 0 "NULL"]
       set temprecord replace-item 0 temprecord [who] of ?
       set temprecord replace-item 1 temprecord ticks
       set m lput temprecord m
-      let location history-location first temprecord
-      let its-history []
       
       set testresultline []
       
-      if location >= 0 [
+      let hindex locate-record first temprecord
+      if hindex >= 0 [
         set testresultline lput "," (lput item 0 temprecord testresultline)
         set testresultline lput "," (lput item 1 temprecord testresultline)
         
-        set its-history item location history
-        let previous recent-record its-history
-        let predir CDC-dir bounding-box (item 2 previous)
+        let previous last item hindex history
+        let predir CDC-dir (item 2 previous) bounding-box
         ifelse not empty? (filter [member? ? zr] predir) [
           set testresultline lput "," (lput TRUE testresultline)
           ]
         [
           set testresultline lput "," (lput FALSE testresultline)
           ]
-        ]
-      
+        ] 
       let msg (list item 0 temprecord who bounding-box item 1 temprecord)
-      set its-history lput msg its-history
-      ifelse location >= 0 [
-        set history replace-item location history its-history
-        ]
-      [
-        set history lput its-history history
-        ]
+      update-record msg keep-history
+      set msgs lput msg msgs
       
       update-global-history msg
       centralized-cdc-validation first msg
       log-results testresultline
-      broadcast fput "AEXT" msg
-      display-history
       ]
     ]
-  ;; update history table to finish open records when corresponding objects cannot be sensed
   close-inactive-records
+  report msgs
 end
 
 ;; Move object (based on modified correlated random walk)
@@ -483,11 +428,20 @@ to-report CDC-dir [reference target]
   report cdc
 end
 
-to-report is-old [its-history record]
-  foreach its-history [
-    if item 0 ? = item 0 record and item 3 ? >= item 3 record [ report true ] 
+to-report is-old [record]
+  let rindex locate-record first record
+  if rindex < 0 [
+    report FALSE
     ]
-  report false
+  let its-history item rindex history
+  report history-exists its-history record 
+end
+
+to-report history-exists [its-history record]
+  foreach its-history [
+    if item 0 ? = item 0 record and (item 3 ?) >= (item 3 record) [ report true ] 
+    ]
+  report false  
 end
 
 to-report has-record [obj-id]
@@ -711,7 +665,7 @@ to update-global-history [record]
     ]
   [
     let its-history item location global-history
-    if not is-old its-history record [
+    if not history-exists its-history record [
         set its-history lput record its-history
         set global-history replace-item location global-history its-history
         ] 
@@ -730,8 +684,8 @@ to centralized-cdc-validation [obj-id]
     if length its-history > 1 [
       let currentBBOX item 2 (last its-history)
       let previousBBOX item 2 (last but-last its-history)
-      let predir CDC-dir currentBBOX previousBBOX
-      let curdir CDC-dir targetzone-boundingbox currentBBOX
+      let predir CDC-dir previousBBOX currentBBOX
+      let curdir CDC-dir currentBBOX targetzone-boundingbox
       ifelse not empty? (filter [member? ? predir] curdir) [
         set testresultline lput TRUE testresultline
         ] 
@@ -863,7 +817,7 @@ to-report disk-component-relation [disk component]
   foreach component [
     let currentcenterx item 1 ?
     let currentcentery item 2 ?
-    if is-connected disk ? [
+    if is-connected disk ? and distance-check disk ? [
       if to-left (list xcor ycor) (list currentcenterx currentcentery) (list cxcor cycor) [
           set connectedtostart TRUE
         ]
@@ -883,20 +837,26 @@ to-report disk-component-relation [disk component]
   ]
 end
 
-to update-record [record]
+;; when each table only keeps one most recent record about one specific object
+to update-record [record keep-history]
   let rindex locate-record first record
   
   ifelse rindex < 0 [
-    set history lput record history
+    set history lput (list record) history
     ] [
-    set history replace-item rindex history record
+    ifelse keep-history = TRUE [
+      set history replace-item rindex history (lput record item rindex history)
+      ]
+    [
+      set history replace-item rindex history (list record)
+    ]
     ]
 end
 
 to-report locate-record [obj-id]
   let index 0
   foreach history [
-    if first ? = obj-id [ report index ]
+    if first first ? = obj-id [ report index ]
     set index index + 1
     ]
   report -1
@@ -905,6 +865,203 @@ end
 to-report next-seed
   report (random 4294967296) - 2147483648
 end
+
+to-report distance-check [disk1 disk2]
+  let x0 item 1 disk1
+  let y0 item 2 disk1
+  let x1 item 1 disk2
+  let y1 item 2 disk2
+  let x2 (x0 + x1) / 2
+  let y2 (y0 + y1) / 2
+  let d sqrt ((x1 - x0) ^ 2 + (y1 - y0) ^ 2)
+  let h sqrt (s ^ 2 - (d / 2) ^ 2)
+  let x3 (x2 + h * (y1 - y0) / d)
+  let y3 (y2 - h * (x1 - x1) / d)
+  let x4 (x2 - h * (y1 - y0) / d)
+  let y4 (y2 + h * (x1 - x1) / d)
+  if sqrt ((x3 - xcor) ^ 2 + (y3 - ycor) ^ 2) < s and sqrt ((x4 - xcor) ^ 2 + (y4 - ycor) ^ 2) < s [
+    report FALSE
+    ]
+  report TRUE
+end
+
+;;direction based message routing
+to rank-neighbour-dir
+  let index 0
+  foreach neighbourhood [
+    let newrecord lput (included-angle ?) ?
+    set neighbourhood replace-item index neighbourhood newrecord
+    set index index + 1
+  ]
+  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
+end
+
+to set-towards-neighbours 
+  foreach neighbourhood [
+    let bbox item 3 ?
+    let nbcdc item 4 ?
+    let selfnbcdc CDC-dir bounding-box bbox
+    if not empty? (filter [member? ? nbcdc] selfnbcdc) [
+      set towards-neighbour lput ? towards-neighbour
+      ]
+    ]
+end
+
+to step_INIT_DB
+  broadcast (list "RANGE" who xcor ycor bounding-box zr)
+  become "WAIT_DB"
+end
+
+to step_WAIT_DB
+  if has-message "RANGE" [
+    let msg received "RANGE"
+    let record but-first msg
+    set neighbourhood lput record neighbourhood
+    ]
+  if length neighbourhood = count comlink-neighbors [
+    rank-neighbour-dir
+    set-towards-neighbours
+    if length neighbourhood != length towards-neighbour [
+      set-similar-neighbours
+      ]
+    become "IDLE_DB"
+    ]
+end
+
+to-report union-boundingbox [bba bbb]
+  let top_c max (list item 0 bba item 0 bbb)
+  let left_c min (list item 1 bba item 1 bbb)
+  let bottom_c min (list item 2 bba item 2 bbb)
+  let right_c max (list item 3 bba item 3 bbb)
+  report (list top_c left_c bottom_c right_c) 
+end
+
+to-report point-in-box [bbox]
+  ifelse ycor < item 0 bbox and xcor > item 1 bbox and ycor > item 2 bbox and xcor < item 3 bbox [
+    report TRUE
+    ] 
+  [
+    report FALSE
+    ]
+end
+
+;; find neighbours in the direction similar to z-zone (two most similiar)
+to set-similar-neighbours
+  let tcenter_x (item 1 targetzone-boundingbox + item 3 targetzone-boundingbox) / 2
+  let tcenter_y (item 0 targetzone-boundingbox + item 2 targetzone-boundingbox) / 2
+  let tangle included-angle (list "target" tcenter_x tcenter_y)
+  let left-neighbour next-reverse-cyclic-neighbour tangle
+  let right-neighbour next-cyclic-neighbour tangle
+  ifelse first left-neighbour = first right-neighbour [
+    set similar-neighbour (list left-neighbour)
+    ]
+  [
+    set similar-neighbour list left-neighbour right-neighbour
+    ]
+end
+
+to-report next-cyclic-neighbour [tangle]
+  let index 0
+  foreach neighbourhood [
+    if last ? > tangle and not member? ? towards-neighbour [
+      report ?
+      ]
+    set index index + 1
+    ]
+  set index 0
+  foreach neighbourhood [
+    if not member? ? towards-neighbour [
+      report ?
+      ]
+    set index index + 1
+    ]
+  report []
+end
+
+to-report next-reverse-cyclic-neighbour [tangle]
+  let reversed-neighbourhood reverse neighbourhood
+  let index 0
+  foreach reversed-neighbourhood [
+    if last ? < tangle and not member? ? towards-neighbour [
+      report ?
+      ] 
+    set index index + 1
+    ]
+  set index 0 
+  foreach reversed-neighbourhood [
+    if not member? ? towards-neighbour [
+      report ?
+      ]
+    set index index + 1
+    ]
+  report []
+end
+
+to step_IDLE_DB
+  ;;"BCST" and "TOZZ"
+  if has-message "BCST" [
+    let msg received "BCST"
+    let record but-first msg
+    if not is-old record [
+      update-record record FALSE
+      foreach towards-neighbour [
+        send msg mote first ?
+        ]
+      foreach neighbourhood [
+        if not member? ? towards-neighbour [
+          send (replace-item 0 msg "TOZZ") mote first ?
+          ]
+        ]
+      ]
+    ]
+  
+  if has-message "TOZZ" [
+    let msg received "TOZZ"
+    let record but-first msg
+    if not is-old record [
+      update-record record FALSE
+      ifelse empty? towards-neighbour and length neighbourhood > 1 [
+        foreach similar-neighbour [
+          send msg mote first ?
+          ]
+        ] 
+      [
+        foreach towards-neighbour [
+          send (replace-item 0 msg "BCST") mote first ?
+          ]
+        ]
+      ]
+    ]
+  
+  let msgs on-sensing-movement FALSE
+  foreach msgs [
+    let tmpmsg ?
+    ifelse empty? towards-neighbour [
+        foreach similar-neighbour [
+          send (fput "TOZZ" tmpmsg) mote first ?
+          ]
+        ] 
+      [
+        foreach towards-neighbour [
+          send (fput "BCST" tmpmsg) mote first ?
+          ]
+        ]
+      ]
+end
+
+to step_IDLE_NB
+  ;; when receieve a message AEXT
+  if has-message "AEXT" [
+    let msg received "AEXT"
+    let record but-first msg
+    update-record record False
+    ]
+  
+  let msgs on-sensing-movement TRUE
+  foreach msgs [
+    broadcast fput "AEXT" ?
+    ]
+end 
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -939,7 +1096,7 @@ INPUTBOX
 60
 105
 Netsize
-700
+500
 1
 0
 Number
@@ -1087,7 +1244,7 @@ OUTPUT
 425
 305
 605
-17
+21
 
 MONITOR
 15
@@ -1141,7 +1298,7 @@ CHOOSER
 Seed
 Seed
 "none" "random" "manual"
-2
+1
 
 INPUTBOX
 15
@@ -1149,7 +1306,7 @@ INPUTBOX
 155
 755
 current-seed
--640111348
+153548145
 1
 0
 Number
@@ -1188,12 +1345,45 @@ NetworkStructure
 CHOOSER
 175
 670
-347
+362
 715
 CommunicationStrategy
 CommunicationStrategy
-"Flooding" "Hybird"
+"Flooding" "Hybird" "Direction-based" "Neighbourhood-based"
+3
+
+MONITOR
+215
+300
+312
+345
+Interior nodes
+interior-num
+17
+1
+11
+
+MONITOR
+215
+360
+327
+405
+Boundary nodes
+boundary-num
+17
+1
+11
+
+INPUTBOX
+170
+730
+322
+790
+searching-steps
 0
+1
+0
+Number
 
 @#$#@#$#@
 ## PROTOCOL
