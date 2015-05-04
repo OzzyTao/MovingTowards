@@ -41,6 +41,9 @@ to setup
     set msgsent [] ;; Clear the list of messages sent
     set msgrecv [] ;; Clear the list of messages received
     set msghear [] ;; Clear the list of messages received    
+    set ctmsgsent [] ;; (Same for messages per tick)
+    set ctmsgrecv []
+    set ctmsghear [] 
   ]
   ask objects [
     set size (world-width / 21)
@@ -182,9 +185,16 @@ end
 ;; false the msgrecv counts are updated
 ;; Argument "message" contains the message to be sent/received
 to update-msg-count [mtype message] 
-  let msgcount msghear ;; By default update counts messages heard 
-  if mtype = "SENT" [set msgcount msgsent] ;; If sent=true then update counts of messages sent
-  if mtype = "RECV" [set msgcount msgrecv] ;; If sent=true then update counts of messages received
+  let msgcount msghear ;; By default update counts messages heard
+  let msgcount2 ctmsghear ;; (Do same for messages per tick)   
+  if mtype = "SENT" [ ;; If sent=true then update counts of messages sent
+    set msgcount msgsent
+    set msgcount2 ctmsgsent
+  ]  
+  if mtype = "RECV" [  ;; If sent=true then update counts of messages received
+    set msgcount msgrecv
+    set msgcount2 ctmsgrecv
+  ]
 
   ;; tind is the index of the message name in msgsent/msgrecv 
   ;; if the message name does not appear in msgsent/msgrecv, tind is false
@@ -201,11 +211,34 @@ to update-msg-count [mtype message]
     ;; Add new count for this message type
     set msgcount fput (list first message 1 (sum map [length (word ?)] message)) msgcount
   ]
+
+  ;; (Do as for above for messages per tick)
+  let tind2 position first message map [first ?] msgcount2  
+  ifelse is-number? tind2 [
+    ;; Update the count of numbers of message
+    set msgcount2 replace-item tind2 msgcount2 (replace-item 1 (item tind2 msgcount2) ((item 1 (item tind2 msgcount2)) + 1) ) 
+    ;; Update the count of length of message
+    set msgcount2 replace-item tind2 msgcount2 (replace-item 2 (item tind2 msgcount2) ((item 2 (item tind2 msgcount2)) + sum map [length (word ?)] message))
+  ]
+  [
+    ;; Add new count for this message type
+    set msgcount2 fput (list first message 1 (sum map [length (word ?)] message)) msgcount2
+  ]
+  
   
   ;; Write the results back to msgsent/msgrecv 
-  if mtype = "SENT" [set msgsent msgcount] ;; If update counts of messages sent
-  if mtype = "RECV" [set msgrecv msgcount] ;; If update counts of messages received
-  if mtype = "HEAR" [set msghear msgcount] ;; If update counts of messages heard
+  if mtype = "SENT" [ ;; If update counts of messages sent
+    set msgsent msgcount
+    set ctmsgsent msgcount2
+  ]
+  if mtype = "RECV" [ ;; If update counts of messages received
+    set msgrecv msgcount
+    set ctmsgrecv msgcount2
+  ]
+  if mtype = "HEAR" [ ;; If update counts of messages heard
+    set msghear msgcount
+    set ctmsghear msgcount2
+  ]
 end
 
 ;; reports message count totals for all motes
@@ -539,4 +572,12 @@ to-report intersect [p_a p_b p_c p_d]
   or (d3 = 0 and IsOnSegment x1 y1 x2 y2 x3 y3) or (d4 = 0 and IsOnSegment x1 y1 x2 y2 x4 y4)
   [report true]
   [report false]
+end
+
+to clear-ctmsgs
+  ask motes [
+    set ctmsgsent []
+    set ctmsgrecv []
+    set ctmsghear []
+  ]  
 end

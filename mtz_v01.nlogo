@@ -62,18 +62,19 @@ to initialize
   set global-history []
   set movement-seed current-seed
   
-  set filename "../mtz-tests/flooding-cdc.csv"
-  file-close-all
-  if file-exists? filename [file-delete filename]
-  file-open filename
-  file-print "Object, ticks, decentralized, centralized"
-  print "Object, ticks, decentralized, centralized"
+;  set filename "../mtz-tests/flooding-cdc.csv"
+;  file-close-all
+;  if file-exists? filename [file-delete filename]
+;  file-open filename
+;  file-print "Object, ticks, decentralized, centralized"
+;  print "Object, ticks, decentralized, centralized"
   
   reset-ticks
 end
 
 ;; Run the algorithm
 to go
+  clear-ctmsgs
   ask motes [step]
   if remainder ticks 10 = 0 [ 
     move-objects
