@@ -8,7 +8,7 @@
 ;; * Received messages in msghear (messages heard, but not processed), same structure. 
 ;; * Received messages in msgrecv (messages received and processed), same structure. 
 ;; m1, m2, ... is message name; n1, n2, ... is number of messages; l1, l2, ... is message length
-turtles-own [messages state parent children msgsent msgrecv msghear]
+turtles-own [messages state parent children msgsent msgrecv msghear ctmsgsent ctmsgrecv ctmsghear]
 
 ;; Each patch can store the local variable region.
 ;; Each patch can store the local variable height which will be the sensed value of any mote in the patch
