@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed move-step]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -76,7 +76,8 @@ end
 to go
   clear-ctmsgs
   ask motes [step]
-  if remainder ticks 10 = 0 [ 
+  if remainder ticks CMR = 0 [ 
+    set move-step move-step + 1
     move-objects
     mote-labels
     object-tails
@@ -1196,6 +1197,17 @@ CommunicationStrategy
 "Flooding" "Hybird"
 0
 
+INPUTBOX
+210
+45
+260
+105
+CMR
+10
+1
+0
+Number
+
 @#$#@#$#@
 ## PROTOCOL
 
@@ -1268,11 +1280,11 @@ NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="e1" repetitions="1" runMetricsEveryStep="false">
+  <experiment name="e1" repetitions="1" runMetricsEveryStep="true">
     <setup>setup
 initialize</setup>
     <go>go</go>
-    <timeLimit steps="10000"/>
+    <timeLimit steps="500"/>
     <metric>ct-sent-number-msg-totals</metric>
     <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
     <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
@@ -1299,6 +1311,9 @@ initialize</setup>
     </enumeratedValueSet>
     <enumeratedValueSet variable="s">
       <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="MCR">
+      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="NetworkStructure">
       <value value="&quot;UDG&quot;"/>

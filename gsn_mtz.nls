@@ -29,6 +29,7 @@ to setup
   if Seed = "manual" [random-seed current-seed] ;; Use a previously generated random seed
   create-motes netsize
   create-objects ObjNo
+  set move-step 0
   ask motes [
     ;set size (world-width / 21) ;; Size of mote is proportional to the world size
     set size s * 2
@@ -664,4 +665,8 @@ end
 
 to-report show-current-seed
   report current-seed
+end
+
+to-report show-move-step
+  report move-step
 end
