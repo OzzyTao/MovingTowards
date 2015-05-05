@@ -68,9 +68,11 @@ to initialize
   
   set filename "../mtz-tests/flooding-cdc.csv"
   file-close-all
+  if output-to-file [
   if file-exists? filename [file-delete filename]
   file-open filename
   file-print "Object, ticks, decentralized, centralized"
+  ]
   print "Object, ticks, decentralized, centralized"
   
   reset-ticks
@@ -211,25 +213,28 @@ to step_IDLE
   ;; when receieve a message AEXT
   if has-message "AEXT" [
     let msg received "AEXT"
-    let record but-first msg
+    let steps last msg
+    let record but-last (but-first msg)
     let location history-location first record
     ifelse location < 0 [
       set history lput (lput record []) history
-      broadcast msg
+      if (searching-steps != 0 and steps < searching-steps) or searching-steps = 0 
+      [ broadcast lput (steps + 1) (fput "AEXT" record) ]
       ]
     [
       let its-history item location history
       if not history-exists its-history record [
         set its-history lput record its-history
         set history replace-item location history its-history
-        broadcast msg 
+        if (searching-steps != 0 and steps < searching-steps) or searching-steps = 0 
+        [ broadcast lput (steps + 1) (fput "AEXT" record) ]
         ] 
       ]
     ]
   
   let msgs on-sensing-movement TRUE
   foreach msgs [
-    broadcast fput "AEXT" ?
+    broadcast lput 1 (fput "AEXT" ?)
     ]
 end
 
@@ -254,12 +259,11 @@ to-report on-sensing-movement [keep-history]
       set m lput temprecord m
       
       set testresultline []
+      set testresultline lput "," (lput item 0 temprecord testresultline)
+      set testresultline lput "," (lput item 1 temprecord testresultline)
       
       let hindex locate-record first temprecord
       if hindex >= 0 [
-        set testresultline lput "," (lput item 0 temprecord testresultline)
-        set testresultline lput "," (lput item 1 temprecord testresultline)
-        
         let previous last item hindex history
         let predir CDC-dir (item 2 previous) bounding-box
         ifelse not empty? (filter [member? ? zr] predir) [
@@ -697,7 +701,7 @@ to centralized-cdc-validation [obj-id]
 end
 
 to log-results [logline]
-  if not empty? logline [
+  if length logline > 6 [
   ifelse output-to-file [
     file-open filename
     foreach logline [
@@ -1012,6 +1016,7 @@ to step_IDLE_DB
           send (replace-item 0 msg "TOZZ") mote first ?
           ]
         ]
+      ask patch-here [set pcolor black]
       ]
     ]
   
@@ -1030,6 +1035,7 @@ to step_IDLE_DB
           send (replace-item 0 msg "BCST") mote first ?
           ]
         ]
+      ask patch-here [set pcolor black]
       ]
     ]
   
@@ -1066,11 +1072,11 @@ end
 GRAPHICS-WINDOW
 355
 20
-963
-649
+1153
+839
 100
 100
-2.98
+3.9204
 1
 12
 1
@@ -1203,7 +1209,7 @@ SWITCH
 178
 show-links
 show-links
-0
+1
 1
 -1000
 
@@ -1306,7 +1312,7 @@ INPUTBOX
 155
 755
 current-seed
-153548145
+2010226071
 1
 0
 Number
@@ -1345,12 +1351,12 @@ NetworkStructure
 CHOOSER
 175
 670
-362
+330
 715
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybird" "Direction-based" "Neighbourhood-based"
-3
+2
 
 MONITOR
 215
@@ -1380,7 +1386,7 @@ INPUTBOX
 322
 790
 searching-steps
-0
+3
 1
 0
 Number
