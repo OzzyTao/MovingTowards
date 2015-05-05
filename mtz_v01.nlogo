@@ -1203,7 +1203,7 @@ INPUTBOX
 260
 105
 CMR
-10
+100
 1
 0
 Number
@@ -1284,7 +1284,8 @@ NetLogo 5.1.0
     <setup>setup
 initialize</setup>
     <go>go</go>
-    <timeLimit steps="500"/>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
     <metric>ct-sent-number-msg-totals</metric>
     <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
     <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
@@ -1312,7 +1313,7 @@ initialize</setup>
     <enumeratedValueSet variable="s">
       <value value="5"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="MCR">
+    <enumeratedValueSet variable="CMR">
       <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="NetworkStructure">
