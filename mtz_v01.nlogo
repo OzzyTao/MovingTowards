@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num move-step]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -80,8 +80,10 @@ end
 
 ;; Run the algorithm
 to go
+  clear-ctmsgs
   ask motes [step]
-  if remainder ticks 10 = 0 and ticks > 70 [ 
+  if remainder ticks CMR = 0 [ 
+    set move-step move-step + 1
     move-objects
     mote-labels
     object-tails
@@ -1346,7 +1348,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-1
+0
 
 CHOOSER
 175
@@ -1387,6 +1389,17 @@ INPUTBOX
 790
 searching-steps
 3
+1
+0
+Number
+
+INPUTBOX
+210
+45
+260
+105
+CMR
+100
 1
 0
 Number
@@ -1463,223 +1476,57 @@ NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Exp.1 Scalability" repetitions="100" runMetricsEveryStep="false">
-    <setup>setup.convoy
-initialize</setup>
-    <go>go</go>
-    <timeLimit steps="1000"/>
-    <metric>GlobalMsgSent</metric>
-    <metric>GlobalMsgLength</metric>
-    <metric>min [LocalMsgSent] of motes</metric>
-    <metric>max [LocalMsgSent] of motes</metric>
-    <metric>mean [LocalMsgSent] of motes</metric>
-    <metric>min [LocalMsgLength] of motes</metric>
-    <metric>max [LocalMsgLength] of motes</metric>
-    <metric>mean [LocalMsgLength] of motes</metric>
-    <enumeratedValueSet variable="Netsize">
-      <value value="50"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fish-number">
-      <value value="2000"/>
-      <value value="1000"/>
-      <value value="500"/>
-      <value value="250"/>
-      <value value="125"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="c">
-      <value value="5.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="NetworkStructure">
-      <value value="&quot;GG&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="velocity">
-      <value value="0.03"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="swim">
-      <value value="&quot;Complex&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="MoteLabel">
-      <value value="&quot;none&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="AllowQueries?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunPlots?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunLatencyExperiment?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunGroupExperiment?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fishmove?">
-      <value value="true"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="Exp.2 Latency" repetitions="100" runMetricsEveryStep="false">
-    <setup>setup.convoy
+  <experiment name="e1" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
 initialize</setup>
     <go>go</go>
     <timeLimit steps="10000"/>
-    <exitCondition>Qcorrect = count motes</exitCondition>
-    <metric>Qd</metric>
-    <metric>Qt</metric>
-    <metric>item 0 Q%correct</metric>
-    <metric>item 1 Q%correct</metric>
-    <metric>item 2 Q%correct</metric>
-    <metric>item 3 Q%correct</metric>
-    <metric>item 4 Q%correct</metric>
-    <metric>item 5 Q%correct</metric>
-    <metric>item 6 Q%correct</metric>
-    <metric>item 7 Q%correct</metric>
-    <metric>item 8 Q%correct</metric>
-    <metric>Qc</metric>
-    <metric>Qcorrect</metric>
-    <enumeratedValueSet variable="Netsize">
-      <value value="50"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>show-current-seed</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="fish-number">
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
       <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="c">
-      <value value="5.5"/>
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="NetworkStructure">
       <value value="&quot;UDG&quot;"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="velocity">
-      <value value="0.03"/>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;Hybird&quot;"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="swim">
-      <value value="&quot;Simple&quot;"/>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="MoteLabel">
-      <value value="&quot;none&quot;"/>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="AllowQueries?">
+    <enumeratedValueSet variable="output-to-file">
       <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunPlots?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunLatencyExperiment?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunGroupExperiment?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fishmove?">
-      <value value="true"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="Exp.3 Group movement" repetitions="100" runMetricsEveryStep="false">
-    <setup>setup.convoy
-initialize</setup>
-    <go>go</go>
-    <timeLimit steps="1100"/>
-    <metric>group.msg</metric>
-    <metric>group.num</metric>
-    <enumeratedValueSet variable="Netsize">
-      <value value="50"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fish-number">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="c">
-      <value value="5.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="NetworkStructure">
-      <value value="&quot;UDG&quot;"/>
-      <value value="&quot;GG&quot;"/>
-      <value value="&quot;Tree (GG)&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="velocity">
-      <value value="0.03"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="swim">
-      <value value="&quot;Simple&quot;"/>
-      <value value="&quot;Turning Angle&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="MoteLabel">
-      <value value="&quot;none&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunPlots?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="AllowQueries?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunLatencyExperiment?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunGroupExperiment?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fishmove?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="g.s">
-      <value value="3"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="g.l">
-      <value value="3"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="Exp.4 Group size, length" repetitions="100" runMetricsEveryStep="false">
-    <setup>setup.convoy
-initialize</setup>
-    <go>go</go>
-    <timeLimit steps="1100"/>
-    <metric>group.msg</metric>
-    <metric>group.num</metric>
-    <enumeratedValueSet variable="Netsize">
-      <value value="50"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fish-number">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="c">
-      <value value="5.5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="NetworkStructure">
-      <value value="&quot;GG&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="velocity">
-      <value value="0.03"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="swim">
-      <value value="&quot;Turning Angle&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="MoteLabel">
-      <value value="&quot;none&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="AllowQueries?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunPlots?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunLatencyExperiment?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="RunGroupExperiment?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fishmove?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="g.s">
-      <value value="2"/>
-      <value value="3"/>
-      <value value="4"/>
-      <value value="5"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="g.l">
-      <value value="2"/>
-      <value value="3"/>
-      <value value="4"/>
-      <value value="5"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>

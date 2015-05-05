@@ -8,7 +8,7 @@
 ;; * Received messages in msghear (messages heard, but not processed), same structure. 
 ;; * Received messages in msgrecv (messages received and processed), same structure. 
 ;; m1, m2, ... is message name; n1, n2, ... is number of messages; l1, l2, ... is message length
-turtles-own [messages state parent children msgsent msgrecv msghear]
+turtles-own [messages state parent children msgsent msgrecv msghear ctmsgsent ctmsgrecv ctmsghear]
 
 ;; Each patch can store the local variable region.
 ;; Each patch can store the local variable height which will be the sensed value of any mote in the patch
@@ -29,6 +29,7 @@ to setup
   if Seed = "manual" [random-seed current-seed] ;; Use a previously generated random seed
   create-motes netsize
   create-objects ObjNo
+  set move-step 0
   ask motes [
     ;set size (world-width / 21) ;; Size of mote is proportional to the world size
     set size s * 2
@@ -41,6 +42,9 @@ to setup
     set msgsent [] ;; Clear the list of messages sent
     set msgrecv [] ;; Clear the list of messages received
     set msghear [] ;; Clear the list of messages received    
+    set ctmsgsent [] ;; (Same for messages per tick)
+    set ctmsgrecv []
+    set ctmsghear [] 
   ]
   ask objects [
     set size (world-width / 21)
@@ -182,9 +186,16 @@ end
 ;; false the msgrecv counts are updated
 ;; Argument "message" contains the message to be sent/received
 to update-msg-count [mtype message] 
-  let msgcount msghear ;; By default update counts messages heard 
-  if mtype = "SENT" [set msgcount msgsent] ;; If sent=true then update counts of messages sent
-  if mtype = "RECV" [set msgcount msgrecv] ;; If sent=true then update counts of messages received
+  let msgcount msghear ;; By default update counts messages heard
+  let msgcount2 ctmsghear ;; (Do same for messages per tick)   
+  if mtype = "SENT" [ ;; If sent=true then update counts of messages sent
+    set msgcount msgsent
+    set msgcount2 ctmsgsent
+  ]  
+  if mtype = "RECV" [  ;; If sent=true then update counts of messages received
+    set msgcount msgrecv
+    set msgcount2 ctmsgrecv
+  ]
 
   ;; tind is the index of the message name in msgsent/msgrecv 
   ;; if the message name does not appear in msgsent/msgrecv, tind is false
@@ -201,11 +212,34 @@ to update-msg-count [mtype message]
     ;; Add new count for this message type
     set msgcount fput (list first message 1 (sum map [length (word ?)] message)) msgcount
   ]
+
+  ;; (Do as for above for messages per tick)
+  let tind2 position first message map [first ?] msgcount2  
+  ifelse is-number? tind2 [
+    ;; Update the count of numbers of message
+    set msgcount2 replace-item tind2 msgcount2 (replace-item 1 (item tind2 msgcount2) ((item 1 (item tind2 msgcount2)) + 1) ) 
+    ;; Update the count of length of message
+    set msgcount2 replace-item tind2 msgcount2 (replace-item 2 (item tind2 msgcount2) ((item 2 (item tind2 msgcount2)) + sum map [length (word ?)] message))
+  ]
+  [
+    ;; Add new count for this message type
+    set msgcount2 fput (list first message 1 (sum map [length (word ?)] message)) msgcount2
+  ]
+  
   
   ;; Write the results back to msgsent/msgrecv 
-  if mtype = "SENT" [set msgsent msgcount] ;; If update counts of messages sent
-  if mtype = "RECV" [set msgrecv msgcount] ;; If update counts of messages received
-  if mtype = "HEAR" [set msghear msgcount] ;; If update counts of messages heard
+  if mtype = "SENT" [ ;; If update counts of messages sent
+    set msgsent msgcount
+    set ctmsgsent msgcount2
+  ]
+  if mtype = "RECV" [ ;; If update counts of messages received
+    set msgrecv msgcount
+    set ctmsgrecv msgcount2
+  ]
+  if mtype = "HEAR" [ ;; If update counts of messages heard
+    set msghear msgcount
+    set ctmsghear msgcount2
+  ]
 end
 
 ;; reports message count totals for all motes
@@ -240,6 +274,36 @@ to-report msg-totals-by-name [mtype lngth name]
   ]
   if mtype = "RECV" [
     report sum [sum map [item ind ?] filter [first ? = name] msgrecv] of motes with [length filter [first ? = name] msgrecv > 0]
+  ]
+end
+
+;; (Like above, but reports message count totals for all motes per tick)
+to-report ctmsg-totals [mtype lngth]
+  let ind 1 
+  if lngth = true [set ind 2]
+  if mtype = "SENT" [
+    report sum [sum map [item ind ?] ctmsgsent] of motes with [length ctmsgsent > 0]
+  ]
+  if mtype = "RECV" [
+    report sum [sum map [item ind ?] ctmsgrecv] of motes with [length ctmsgrecv > 0]
+  ]
+  if mtype = "HEAR" [
+    report sum [sum map [item ind ?] ctmsghear] of motes with [length ctmsghear > 0]
+  ]
+end
+
+;; (Like above, but reports message count totals for all motes for a particular message name per tick)
+to-report ctmsg-totals-by-name [mtype lngth name]
+  let ind 1 
+  if lngth = true [set ind 2]
+  if mtype = "SENT" [
+    report sum [sum map [item ind ?] filter [first ? = name] ctmsgsent] of motes with [length filter [first ? = name] ctmsgsent > 0]
+  ]
+  if mtype = "HEAR" [
+    report sum [sum map [item ind ?] filter [first ? = name] ctmsghear] of motes with [length filter [first ? = name] ctmsghear > 0]
+  ]
+  if mtype = "RECV" [
+    report sum [sum map [item ind ?] filter [first ? = name] ctmsgrecv] of motes with [length filter [first ? = name] ctmsgrecv > 0]
   ]
 end
 
@@ -302,6 +366,56 @@ end
 to-report hear-number-msg-totals-by-name [name]
   report msg-totals-by-name "HEAR" false name
 end
+
+;; (Like above, but wrappers for messages per tick)
+to-report ct-sent-length-msg-totals
+  report ctmsg-totals "SENT" true
+end
+
+to-report ct-sent-number-msg-totals
+  report ctmsg-totals "SENT" false
+end
+
+to-report ct-recv-length-msg-totals
+  report ctmsg-totals "RECV" true
+end
+
+to-report ct-recv-number-msg-totals
+  report ctmsg-totals "RECV" false
+end
+
+to-report ct-hear-length-msg-totals
+  report ctmsg-totals "HEAR" true
+end
+
+to-report ct-hear-number-msg-totals
+  report ctmsg-totals "HEAR" false
+end
+
+to-report ct-sent-length-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "SENT" true name
+end
+
+to-report ct-sent-number-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "SENT" false name
+end
+
+to-report ct-recv-length-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "RECV" true name
+end
+
+to-report ct-recv-number-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "RECV" false name
+end
+
+to-report ct-hear-length-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "HEAR" true name
+end
+
+to-report ct-hear-number-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "HEAR" false name
+end
+
 
 ;; Utility function for counting occurrences of an item in a list
 to-report count-occurrences [x mylist]
@@ -539,4 +653,20 @@ to-report intersect [p_a p_b p_c p_d]
   or (d3 = 0 and IsOnSegment x1 y1 x2 y2 x3 y3) or (d4 = 0 and IsOnSegment x1 y1 x2 y2 x4 y4)
   [report true]
   [report false]
+end
+
+to clear-ctmsgs
+  ask motes [
+    set ctmsgsent []
+    set ctmsgrecv []
+    set ctmsghear []
+  ]  
+end
+
+to-report show-current-seed
+  report current-seed
+end
+
+to-report show-move-step
+  report move-step
 end
