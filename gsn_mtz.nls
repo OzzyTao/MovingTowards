@@ -661,3 +661,7 @@ to clear-ctmsgs
     set ctmsghear []
   ]  
 end
+
+to-report show-current-seed
+  report current-seed
+end
