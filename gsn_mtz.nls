@@ -276,6 +276,36 @@ to-report msg-totals-by-name [mtype lngth name]
   ]
 end
 
+;; (Like above, but reports message count totals for all motes per tick)
+to-report ctmsg-totals [mtype lngth]
+  let ind 1 
+  if lngth = true [set ind 2]
+  if mtype = "SENT" [
+    report sum [sum map [item ind ?] ctmsgsent] of motes with [length ctmsgsent > 0]
+  ]
+  if mtype = "RECV" [
+    report sum [sum map [item ind ?] ctmsgrecv] of motes with [length ctmsgrecv > 0]
+  ]
+  if mtype = "HEAR" [
+    report sum [sum map [item ind ?] ctmsghear] of motes with [length ctmsghear > 0]
+  ]
+end
+
+;; (Like above, but reports message count totals for all motes for a particular message name per tick)
+to-report ctmsg-totals-by-name [mtype lngth name]
+  let ind 1 
+  if lngth = true [set ind 2]
+  if mtype = "SENT" [
+    report sum [sum map [item ind ?] filter [first ? = name] ctmsgsent] of motes with [length filter [first ? = name] ctmsgsent > 0]
+  ]
+  if mtype = "HEAR" [
+    report sum [sum map [item ind ?] filter [first ? = name] ctmsghear] of motes with [length filter [first ? = name] ctmsghear > 0]
+  ]
+  if mtype = "RECV" [
+    report sum [sum map [item ind ?] filter [first ? = name] ctmsgrecv] of motes with [length filter [first ? = name] ctmsgrecv > 0]
+  ]
+end
+
 ;; Wrapper for msg-totals
 to-report sent-length-msg-totals
   report msg-totals "SENT" true
@@ -335,6 +365,56 @@ end
 to-report hear-number-msg-totals-by-name [name]
   report msg-totals-by-name "HEAR" false name
 end
+
+;; (Like above, but wrappers for messages per tick)
+to-report ct-sent-length-msg-totals
+  report ctmsg-totals "SENT" true
+end
+
+to-report ct-sent-number-msg-totals
+  report ctmsg-totals "SENT" false
+end
+
+to-report ct-recv-length-msg-totals
+  report ctmsg-totals "RECV" true
+end
+
+to-report ct-recv-number-msg-totals
+  report ctmsg-totals "RECV" false
+end
+
+to-report ct-hear-length-msg-totals
+  report ctmsg-totals "HEAR" true
+end
+
+to-report ct-hear-number-msg-totals
+  report ctmsg-totals "HEAR" false
+end
+
+to-report ct-sent-length-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "SENT" true name
+end
+
+to-report ct-sent-number-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "SENT" false name
+end
+
+to-report ct-recv-length-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "RECV" true name
+end
+
+to-report ct-recv-number-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "RECV" false name
+end
+
+to-report ct-hear-length-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "HEAR" true name
+end
+
+to-report ct-hear-number-msg-totals-by-name [name]
+  report ctmsg-totals-by-name "HEAR" false name
+end
+
 
 ;; Utility function for counting occurrences of an item in a list
 to-report count-occurrences [x mylist]
