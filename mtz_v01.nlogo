@@ -1641,7 +1641,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.0.1
+NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1706,12 +1706,17 @@ initialize</setup>
     <timeLimit steps="10000"/>
     <metric>show-move-step</metric>
     <metric>ct-sent-number-msg-totals</metric>
-    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "BCST"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TOZZ"</metric>
     <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
     <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
     <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
     <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
     <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
     <enumeratedValueSet variable="Seed">
       <value value="&quot;manual&quot;"/>
     </enumeratedValueSet>
