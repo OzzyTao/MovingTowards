@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num move-step max-tree-depth]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num move-step max-tree-depth ct-event]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -76,12 +76,15 @@ to initialize
   ]
   print "Object, ticks, decentralized, centralized"
   
+  set ct-event 0
+  
   reset-ticks
 end
 
 ;; Run the algorithm
 to go
   clear-ctmsgs
+  set ct-event 0
   ask motes [step]
   if remainder ticks CMR = 0 [ 
     move-objects
@@ -292,6 +295,7 @@ to-report on-sensing-movement [keep-history]
       update-global-history msg
       centralized-cdc-validation first msg
       log-results testresultline
+      set ct-event ct-event + 1
       ]
     ]
   close-inactive-records
