@@ -1,4 +1,4 @@
- __includes["./gsn_mtz.nls" "./env_mtz.nls"]
+__includes["./gsn_mtz.nls" "./env_mtz.nls" "./btp_mtz.nls"]
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
 motes-own [m zr history neighbourhood towards-neighbour similar-neighbour]
@@ -61,6 +61,7 @@ to initialize
     set predis 0
     ]
   
+  set testresultline []
   set global-history []
   set movement-seed current-seed
   set interior-num 0
@@ -83,10 +84,10 @@ to go
   clear-ctmsgs
   ask motes [step]
   if remainder ticks CMR = 0 [ 
-    set move-step move-step + 1
     move-objects
     mote-labels
     object-tails
+    set move-step move-step + 1
   ]
   tick
 end
@@ -118,7 +119,7 @@ to step_INIZ
   if communicationstrategy = "Flooding" [
     become "IDLE"
     ]
-  if communicationstrategy = "Direction-based" [
+  if communicationstrategy = "Direction-based" or communicationstrategy = "CDC-similarity" [
     become "INIT_DB"
     ]
   if communicationstrategy = "Neighbourhood-based" [
@@ -138,7 +139,7 @@ to step_INIT
     if communicationstrategy = "Flooding" [
       become "IDLE"
       ]
-    if communicationstrategy = "Direction-based" [
+    if communicationstrategy = "Direction-based" or communicationstrategy = "CDC-similarity" [
       become "INIT_DB"
       ]
     if communicationstrategy = "Neighbourhood-based" [
@@ -892,6 +893,16 @@ to-report distance-check [disk1 disk2]
 end
 
 ;;direction based message routing
+to rank-neighbour-cdc-similarity
+  let index 0 
+  foreach neighbourhood [
+    let newrecord lput (cdc_dissimilarity bounding-box targetzone-boundingbox item 3 ?) ?
+    set neighbourhood replace-item index neighbourhood newrecord
+    set index index + 1
+    ]
+  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
+end
+
 to rank-neighbour-dir
   let index 0
   foreach neighbourhood [
@@ -925,11 +936,20 @@ to step_WAIT_DB
     set neighbourhood lput record neighbourhood
     ]
   if length neighbourhood = count comlink-neighbors [
-    rank-neighbour-dir
-    set-towards-neighbours
-    if length neighbourhood != length towards-neighbour [
-      set-similar-neighbours
+    ifelse communicationstrategy = "CDC-similarity" [
+      rank-neighbour-cdc-similarity
+      set-towards-neighbours
+      if length neighbourhood != length towards-neighbour [
+        set-similar-neighbours-cdc 2
+        ]
       ]
+    [
+      rank-neighbour-dir
+      set-towards-neighbours
+      if length neighbourhood != length towards-neighbour [
+        set-similar-neighbours
+      ]
+    ]
     become "IDLE_DB"
     ]
 end
@@ -963,6 +983,21 @@ to set-similar-neighbours
     ]
   [
     set similar-neighbour list left-neighbour right-neighbour
+    ]
+end
+
+to set-similar-neighbours-cdc [number]
+  let real_number 0
+  ifelse number > length neighbourhood [
+    set real_number length neighbourhood
+    ]
+  [
+    set real_number number
+    ]
+  let i 0
+  while [i < real_number] [
+    set similar-neighbour lput (item i neighbourhood) similar-neighbour
+    set i i + 1
     ]
 end
 
@@ -1018,7 +1053,7 @@ to step_IDLE_DB
           send (replace-item 0 msg "TOZZ") mote first ?
           ]
         ]
-      ask patch-here [set pcolor black]
+      ask patch-here [set pcolor yellow]
       ]
     ]
   
@@ -1070,6 +1105,20 @@ to step_IDLE_NB
     broadcast fput "AEXT" ?
     ]
 end 
+
+to-report show-moving-towards
+  if length testresultline > 6 [
+    ifelse item 4 testresultline [report 1] [report 0]
+    ]
+  report -1
+end
+
+to-report show-true-moving-towards
+  if length testresultline > 6 [
+    ifelse last testresultline [report 1] [report 0]
+    ]
+  report -1
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -1306,7 +1355,7 @@ CHOOSER
 Seed
 Seed
 "none" "random" "manual"
-1
+2
 
 INPUTBOX
 15
@@ -1314,7 +1363,7 @@ INPUTBOX
 155
 755
 current-seed
-2010226071
+-640111348
 1
 0
 Number
@@ -1348,7 +1397,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-0
+1
 
 CHOOSER
 175
@@ -1357,7 +1406,7 @@ CHOOSER
 715
 CommunicationStrategy
 CommunicationStrategy
-"Flooding" "Hybird" "Direction-based" "Neighbourhood-based"
+"Flooding" "Hybird" "Direction-based" "CDC-similarity" "Neighbourhood-based"
 2
 
 MONITOR
@@ -1399,7 +1448,7 @@ INPUTBOX
 260
 105
 CMR
-100
+10
 1
 0
 Number
@@ -1468,7 +1517,6 @@ sensor
 true
 0
 Circle -7500403 false true 0 0 300
-Rectangle -7500403 true true 135 135 165 165
 
 @#$#@#$#@
 NetLogo 5.0.1

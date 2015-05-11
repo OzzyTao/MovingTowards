@@ -1,0 +1,382 @@
+to-report cdc_dissimilarity [reference target1 target2]
+  let d1 cdc_matrix reference target1
+  let d2 cdc_matrix reference target2
+  let diff direction_difference d1 d2
+  let sd supply_demand diff
+  if empty? first sd or empty? last sd [
+    report 0
+    ]
+  let cost cost_matrix first sd last sd
+  let nw_m NW_allocation first sd last sd
+  while [evolve nw_m cost] []
+  report dissimilarity nw_m cost
+end
+
+to-report cdc_matrix [reference target]
+  let ref-top item 0 reference
+  let ref-left item 1 reference
+  let ref-bottom item 2 reference
+  let ref-right item 3 reference
+  let tar-top item 0 target
+  let tar-left item 1 target
+  let tar-bottom item 2 target
+  let tar-right item 3 target
+  
+  let tar-area (tar-right - tar-left) * (tar-top - tar-bottom)
+  let remain_propo 1
+    
+  let matrix n-values 3 [n-values 3 [0]]
+  if tar-left < ref-left [
+    if tar-top > ref-top [
+      let tmp_x 0
+      let tmp_y 0
+      ifelse ref-top > tar-bottom [set tmp_y ref-top] [set tmp_y tar-bottom]
+      ifelse ref-left < tar-right [set tmp_x ref-left] [set tmp_x tar-right]
+      let value abs ((tmp_x - tar-left) * (tar-top - tmp_y)) / tar-area
+      set matrix replace-item 0 matrix (replace-item 0 (first matrix) value)
+      set remain_propo remain_propo - value
+      ]
+    if tar-bottom < ref-bottom [
+      let tmp_x 0
+      let tmp_y 0
+      ifelse ref-bottom < tar-top [set tmp_y ref-bottom] [set tmp_y tar-top]
+      ifelse ref-left < tar-right [set tmp_x ref-left] [set tmp_x tar-right]
+      let value abs ((tmp_x - tar-left) * (tmp_y - tar-bottom)) / tar-area
+      set matrix replace-item 2 matrix (replace-item 0 (item 2 matrix) value)
+      set remain_propo remain_propo - value
+      ]
+    ]
+  if tar-right > ref-right [
+    if tar-top > ref-top [
+      let tmp_x 0
+      let tmp_y 0
+      ifelse ref-top > tar-bottom [set tmp_y ref-top] [set tmp_y tar-bottom]
+      ifelse ref-right > tar-left [set tmp_x ref-right] [set tmp_x tar-left]
+      let value abs ((tar-right - tmp_x) * (tar-top - tmp_y)) / tar-area
+      set matrix replace-item 0 matrix (replace-item 2 (first matrix) value)
+      set remain_propo remain_propo - value
+      ]
+    if tar-bottom < ref-bottom [
+      let tmp_x 0
+      let tmp_y 0
+      ifelse ref-bottom < tar-top [set tmp_y ref-bottom] [set tmp_y tar-top]
+      ifelse ref-right > tar-left [set tmp_x ref-right] [set tmp_x tar-left]
+      let value abs ((tar-right - tmp_x) * (tar-bottom - tmp_y)) / tar-area
+      set matrix replace-item 2 matrix (replace-item 2 (item 2 matrix) value)   
+      set remain_propo remain_propo - value   
+      ]
+    ]
+  if tar-right > ref-left and tar-left < ref-right [
+    if tar-top > ref-top [
+      let small_x 0
+      let big_x 0
+      let small_y 0
+      ifelse ref-left < tar-left [set small_x tar-left] [set small_x ref-left]
+      ifelse ref-right > tar-right [set big_x tar-right] [set big_x ref-right]
+      ifelse ref-top > tar-bottom [set small_y ref-top] [set small_y tar-bottom]
+      let value abs ((big_x - small_x) * (tar-top - small_y)) / tar-area
+      set matrix replace-item 0 matrix (replace-item 1 (item 0 matrix) value)
+      set remain_propo remain_propo - value
+      ]
+    if tar-bottom < ref-bottom [
+      let small_x 0
+      let big_x 0
+      let big_y 0
+      ifelse ref-left < tar-left [set small_x tar-left] [set small_x ref-left]
+      ifelse ref-right > tar-right [set big_x tar-right] [set big_x ref-right]
+      ifelse ref-bottom > tar-top [set big_y tar-top] [set big_y ref-bottom]
+      let value abs ((big_x - small_x) * (big_y - tar-bottom)) / tar-area
+      set matrix replace-item 2 matrix (replace-item 1 (item 2 matrix) value)
+      set remain_propo remain_propo - value
+      ]
+    ]
+  if tar-top > ref-bottom and tar-bottom < ref-top [
+    if tar-left < ref-left [
+      let small_x tar-left
+      let big_x 0
+      let small_y 0
+      let big_y 0
+      ifelse ref-left < tar-right [set big_x ref-left] [set big_x tar-right]
+      ifelse ref-top < tar-top [set big_y ref-top] [set big_y tar-top]
+      ifelse ref-bottom < tar-bottom [set small_y tar-bottom] [set small_y ref-bottom]
+      let value abs ((big_x - small_x) * (big_y - small_y)) / tar-area
+      set matrix replace-item 1 matrix (replace-item 0 (item 1 matrix) value)
+      set remain_propo remain_propo - value
+      ]
+    if tar-right > ref-right [
+      let small_x 0
+      let big_x tar-right
+      let small_y 0 
+      let big_y 0
+      ifelse ref-right > tar-left [set small_x ref-right] [set small_x tar-left]
+      ifelse ref-top < tar-top [set big_y ref-top] [set big_y tar-top]
+      ifelse ref-bottom < tar-bottom [set small_y tar-bottom] [set small_y ref-bottom]
+      let value abs ((big_x - small_x) * (big_y - small_y)) / tar-area
+      set matrix replace-item 1 matrix (replace-item 2 (item 1 matrix) value)
+      set remain_propo remain_propo - value
+      ]
+    ]
+  set matrix replace-item 1 matrix (replace-item 1 (item 1 matrix) remain_propo)
+  report matrix  
+end
+
+to-report copy_list [original_list]
+  report map [?] original_list
+end
+
+to-report copy_matrix [original_matrix]
+  report map [copy_list ?] original_matrix
+end
+
+to-report even_sublist [original_list]
+  let result []
+  let i 0
+  while [i < length original_list] [
+    if remainder i 2 = 1 [
+      set result lput item i original_list result
+      ]
+    set i i + 1
+    ]
+  report result
+end 
+
+to-report odd_sublist [original_list]
+  let result []
+  let i 0
+  while [i < length original_list] [
+    if remainder i 2 = 0 [
+      set result lput item i original_list result
+      ]
+    set i i + 1
+    ]
+  report result
+end
+
+to-report direction_difference [m1 m2]
+  let delta []
+  let m_size length m1
+  let i 0
+  while [i < m_size] [
+    let row_m1 item i m1
+    let row_m2 item i m2
+    let delta_row []
+    let j 0
+    while [j < m_size] [
+      set delta_row lput (item j row_m1 - item j row_m2) delta_row
+      set j j + 1
+      ]
+    set delta lput delta_row delta
+    set i i + 1
+    ]
+  report delta
+end
+
+to-report manhattan_distance [cell1 cell2]
+  report (abs (first cell1 - first cell2)) + (abs (last cell1 - last cell2))
+end
+
+to-report supply_demand [delta_m]
+  let supply []
+  let demand []
+  let m_size length delta_m
+  let i 0
+  while [ i < m_size ] [
+    let j 0
+    while [ j < m_size ] [
+      let record []
+      set record lput (item j item i delta_m) record
+      set record lput (list i j) record
+      if item j item i delta_m > 0 [
+        set supply lput record supply
+        ]
+      if item j item i delta_m < 0 [
+        set demand lput record demand
+        ]
+      set j j + 1
+      ]
+    set i i + 1
+    ]
+  report (list supply demand)
+end
+
+to-report cost_matrix [supply demand]
+  let cost []
+  foreach supply [
+    let this_supply ?
+    let tmp_row []
+    foreach demand [
+      set tmp_row lput manhattan_distance (last this_supply) (last ?) tmp_row
+      ]
+    set cost lput tmp_row cost
+    ]
+  report cost
+end
+
+to-report NW_allocation [sup dem]
+  let supply map [first ?] sup
+  let demand map [first ?] dem
+  let rows length sup
+  let cols length dem
+  let nw_m n-values rows [n-values cols [-1]]
+  let i 0
+  let j 0
+  while [i < rows and j < cols] [
+    ifelse item i supply < item j demand [
+      set nw_m replace-item i nw_m (replace-item j (item i nw_m) item i supply)
+      set demand replace-item j demand (item j demand - item i supply)
+      set i i + 1
+      ]
+    [
+      set nw_m replace-item i nw_m (replace-item j (item i nw_m) item j demand)
+      set supply replace-item i supply (item i supply - item j demand)
+      set j j + 1
+      ]
+    ]
+  report nw_m
+end 
+
+to-report realocate [old_allocation cost_m loc]
+  if item (item 1 loc) item (first loc) old_allocation != -1 [
+    report False
+    ]
+  let cost_change 0
+  let path []
+  set path lput (list first loc item 1 loc) path
+  let supply n-values (length cost_m) [0]
+  let demand n-values (length first cost_m) [0]
+  set supply replace-item first loc supply 1
+  set demand replace-item item 1 loc demand 1
+  set path find_path old_allocation path supply demand
+  if not empty? path [
+    let weight 1
+    foreach path [
+      let cell ?
+      set cost_change cost_change + weight * (item (item 1 cell) item (first cell) cost_m)
+      set weight weight * -1
+      ]
+    ]
+  report list cost_change path
+end
+
+to-report find_path [allocation pre_path supply demand]
+  let candidates next_step allocation pre_path supply demand
+  foreach candidates [
+    let candidate ?
+    ifelse (first first pre_path = first candidate or item 1 first pre_path = item 1 candidate) and length pre_path > 2 [
+      report lput pre_path candidate
+      ] [
+      let new_supply replace-item first candidate supply (item first candidate supply + 1)
+      let new_demand replace-item item 1 candidate demand (item item 1 candidate demand + 1)
+      let new_path copy_matrix pre_path
+      set new_path lput candidate new_path
+      let path find_path allocation new_path new_supply new_demand
+      if not empty? path [
+        report path
+        ]
+      ]
+    ]
+  report []
+end
+
+to-report next_step [current_allocation pre_path supply demand]
+  let current_row first last pre_path
+  let current_col item 1 last pre_path
+  let rows length supply
+  let cols length demand
+  let candidates []
+  if item current_col demand < 2 [
+    let i 0
+    while [i < rows] [
+      if i != current_row and item current_col item i current_allocation != -1 and item i supply < 2 [
+        set candidates lput (list i current_col) candidates
+        ]
+      set i i + 1
+      ]
+    ]
+  if item current_row supply < 2 [
+    let j 0
+    while [j < cols] [
+      if j != current_col and item j item current_row current_allocation != -1 and item j demand < 2 [
+        set candidates lput (list current_row j) candidates
+        ]
+      set j j + 1
+      ]
+    ]
+  report candidates
+end
+
+to-report evolve [allocation cost_m] 
+  let candidates []
+  let rows length allocation
+  let cols length first allocation
+  let i 0
+  while [i < rows] [
+    let j 0
+    while [j < cols] [
+      if item j item i allocation = -1 [
+        set candidates lput realocate allocation cost_m (list i j) candidates
+        ]
+      set j j + 1
+      ]
+    set i i + 1
+    ]
+  let value 0
+  let index 0
+  set i 0
+  while [i < length candidates] [
+    if first item i candidates < value [
+      set value first item i candidates
+      set index i
+      ]
+    set i i + 1
+    ]
+  if value < 0 [
+    let path last item index candidates
+    let reassign_list map [item (item 1 ?) item (first ?) allocation] path
+    let reassign_value min (even_sublist reassign_list)
+    let odd_cells odd_sublist path
+    let even_cells even_sublist path
+    foreach odd_cells [
+      let row first ?
+      let col item 1 ?
+      ifelse item col item row allocation < 0 [
+        set allocation replace-item row allocation (replace-item col (item row allocation) reassign_value)
+        ]
+      [
+        set allocation replace-item row allocation (replace-item col (item row allocation) ((item col item row allocation) + reassign_value))
+        ]
+      ]
+    foreach even_cells [
+      let row first ?
+      let col item 1 ?
+      ifelse item col item row allocation > reassign_value [
+        set allocation replace-item row allocation (replace-item col (item row allocation) ((item col item row allocation) - reassign_value))
+        ]
+      [
+        set allocation replace-item row allocation (replace-item col (item row allocation) -1)
+        ]
+      ]
+    report True
+    ]
+  report False
+end
+
+to-report dissimilarity [allocation cost_m]
+  let result 0
+  let rows length allocation
+  let cols length first allocation
+  let i 0
+  while [i < rows] [
+    let j 0
+    while [j < cols] [
+      let tmp (item j item i allocation) * (item j item i cost_m)
+      if tmp > 0 [
+        set result result + tmp
+        ]
+      set j j + 1
+      ]
+    set i i + 1 
+    ]
+  report result
+end
+
