@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num move-step]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num move-step max-tree-depth]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -1232,6 +1232,15 @@ to decide-on-history [record]
       ]
     ]
 end
+
+to-report max-path-length
+  ask motes [
+    if tree-depth > max-tree-depth [
+      set max-tree-depth tree-depth
+      ]
+    ]
+  report max-tree-depth
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -1266,7 +1275,7 @@ INPUTBOX
 60
 105
 Netsize
-500
+1000
 1
 0
 Number
@@ -1510,7 +1519,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-1
+0
 
 CHOOSER
 175
@@ -1561,7 +1570,7 @@ INPUTBOX
 260
 105
 CMR
-10
+100
 1
 0
 Number
