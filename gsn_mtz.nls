@@ -673,3 +673,7 @@ end
 to-report show-move-step
   report move-step
 end
+
+to-report show-ct-event
+  report ct-event
+end
