@@ -1,7 +1,7 @@
 __includes["./gsn_mtz.nls" "./env_mtz.nls" "./btp_mtz.nls"]
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
-motes-own [m zr history neighbourhood towards-neighbour similar-neighbour]
+motes-own [m zr history neighbourhood towards-neighbour similar-neighbour tree-parent tree-depth]
 ;; history is a list of tables that each one keep records about one specific object
 ;; Define a new breed of turtle called motes (i.e. moving objects)
 breed [objects object]
@@ -109,6 +109,9 @@ to step
   if state = "WAIT_DB" [step_WAIT_DB stop]
   if state = "IDLE_DB" [step_IDLE_DB stop]
   if state = "IDLE_NB" [step_IDLE_NB stop]
+  if state = "ROOT_TE" [step_ROOT_TE stop]
+  if state = "IDLE_TE" [step_IDLE_TE stop]
+  if state = "DONE_TE" or state = "ROOT" [step_DONE_TE stop]
 end
 
 to step_INIZ
@@ -124,6 +127,9 @@ to step_INIZ
     ]
   if communicationstrategy = "Neighbourhood-based" [
     become "IDLE_NB"
+    ]
+  if communicationstrategy = "Shortest-path-tree" [
+    become "ROOT_TE"
     ]
 end
 
@@ -144,6 +150,9 @@ to step_INIT
       ]
     if communicationstrategy = "Neighbourhood-based" [
       become "IDLE_NB"
+      ]
+    if communicationstrategy = "Shortest-path-tree" [
+      become "IDLE_TE"
       ]
     ]
 end
@@ -1119,6 +1128,110 @@ to-report show-true-moving-towards
     ]
   report -1
 end
+
+;; centralized method : shortest path tree
+to step_ROOT_TE 
+  ask comlinks [ hide-link ]
+  set tree-parent -1
+  set tree-depth 0
+  broadcast (list "TREE" who tree-depth)
+  become "ROOT"
+end
+
+to step_IDLE_TE
+  if has-message "TREE" [
+    let msg received "TREE"
+    set tree-parent item 1 msg
+    ask comlink who tree-parent [show-link]
+    set tree-depth item 2 msg + 1
+    broadcast (list "TREE" who tree-depth)
+    become "DONE_TE"
+    ]
+end
+
+to step_DONE_TE
+  if has-message "TREE" [
+    let msg received "TREE"
+    if item 2 msg + 1 < tree-depth [
+      ask comlink who tree-parent [hide-link]
+      set tree-parent item 1 msg
+      ask comlink who tree-parent [show-link]
+      set tree-depth item 2 msg + 1
+      broadcast (list "TREE" who tree-depth)
+      ]
+    ]
+  
+  if has-message "AEXT" [
+    let msg received "AEXT"
+    ifelse tree-parent = -1 [
+      let record but-first msg
+      decide-on-history record
+      ]
+    [
+      send msg mote tree-parent
+      ] 
+    ]
+  
+  ;; on sensing entering event
+  ifelse tree-parent = -1 [
+    let msgs on-sensing-movement TRUE
+    ]
+  [
+    let sensor self
+    let in-range-objects objects with [within-sensing-range sensor]
+    ifelse count in-range-objects > 0 [
+      highlight-sensing-range
+      ]
+    [
+      clear-sensing-range
+      ]
+    foreach sort in-range-objects [
+      if which-active-record [who] of ? = -1 [
+        let temprecord (list "NULL" 0 "NULL")
+        set temprecord replace-item 0 temprecord [who] of ?
+        set temprecord replace-item 1 temprecord ticks
+        set m lput temprecord m
+        let msg (list first temprecord who bounding-box item 1 temprecord)
+        update-global-history msg
+        send (fput "AEXT" msg) mote tree-parent
+        ]
+      ]
+    close-inactive-records
+    ]
+end
+
+
+to decide-on-history [record]
+  let obj-id first record
+  update-record record TRUE
+  let location -1
+  let index 0
+  foreach history [
+    if first first ? = obj-id [set location index]
+    set index index + 1
+    ]
+  
+  if location >= 0 [
+    set testresultline (list obj-id "," (last record) ",")
+    let its-history item location history
+    if length its-history > 1 [
+      let currentBBOX item 2 (last its-history)
+      let previousBBOX item 2 (last but-last its-history)
+      let predir CDC-dir previousBBOX currentBBOX
+      let curdir CDC-dir currentBBOX targetzone-boundingbox
+      ifelse not empty? (filter [member? ? predir] curdir) [
+        set testresultline lput TRUE testresultline
+        set testresultline lput "," testresultline
+        ] 
+      [
+        set testresultline lput FALSE testresultline
+        set testresultline lput "," testresultline
+        ]
+      centralized-cdc-validation obj-id
+      log-results testresultline
+      ]
+    ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -1153,7 +1266,7 @@ INPUTBOX
 60
 105
 Netsize
-750
+500
 1
 0
 Number
@@ -1406,8 +1519,8 @@ CHOOSER
 715
 CommunicationStrategy
 CommunicationStrategy
-"Flooding" "Hybird" "Direction-based" "CDC-similarity" "Neighbourhood-based"
-2
+"Flooding" "Hybird" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree"
+5
 
 MONITOR
 215
@@ -1519,7 +1632,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
