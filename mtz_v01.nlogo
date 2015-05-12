@@ -462,7 +462,7 @@ end
 
 to-report history-exists [its-history record]
   foreach its-history [
-    if item 0 ? = item 0 record and (item 3 ?) >= (item 3 record) [ report true ] 
+    if (item 0 ? = item 0 record) and (item 1 ? = item 1 record) and (item 3 ?) >= (item 3 record) [ report true ] 
     ]
   report false  
 end
@@ -1308,7 +1308,7 @@ INPUTBOX
 60
 105
 Netsize
-500
+750
 1
 0
 Number
@@ -1552,7 +1552,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-1
+0
 
 CHOOSER
 175
@@ -1562,7 +1562,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybird" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree"
-5
+0
 
 MONITOR
 215
