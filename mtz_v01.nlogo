@@ -15,7 +15,7 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num move-step max-tree-depth]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed interior-num boundary-num move-step max-tree-depth ct-event]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -76,12 +76,15 @@ to initialize
   ]
   print "Object, ticks, decentralized, centralized"
   
+  set ct-event 0
+  
   reset-ticks
 end
 
 ;; Run the algorithm
 to go
   clear-ctmsgs
+  set ct-event 0
   ask motes [step]
   if remainder ticks CMR = 0 [ 
     move-objects
@@ -292,6 +295,7 @@ to-report on-sensing-movement [keep-history]
       update-global-history msg
       centralized-cdc-validation first msg
       log-results testresultline
+      set ct-event ct-event + 1
       ]
     ]
   close-inactive-records
@@ -1656,7 +1660,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.0.1
+NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1721,12 +1725,18 @@ initialize</setup>
     <timeLimit steps="10000"/>
     <metric>show-move-step</metric>
     <metric>ct-sent-number-msg-totals</metric>
-    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "BCST"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TOZZ"</metric>
     <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
     <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
     <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
     <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
     <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-event</metric>
     <enumeratedValueSet variable="Seed">
       <value value="&quot;manual&quot;"/>
     </enumeratedValueSet>
@@ -1764,6 +1774,65 @@ initialize</setup>
       <value value="&quot;Hybird&quot;"/>
       <value value="&quot;Direction-based&quot;"/>
       <value value="&quot;Neighbourhood-based&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e3" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "BCST"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TOZZ"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-event</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;Hybird&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="move-type">
       <value value="&quot;CRW&quot;"/>
