@@ -463,10 +463,10 @@ to-report is-old [record]
 end
 
 to-report history-exists [its-history record]
-  let tmplist its-history
-  while [item 3 last tmplist >= item 3 record] [
-    if item 1 last tmplist = item 1 record [report true]
-    set tmplist but-last tmplist
+  let index length its-history - 1
+  while [index >= 0  and (item 3 item index its-history >= item 3 record) ] [
+    if item 1 item index its-history = item 1 record [report true]
+    set index index - 1
     ]
   ;;foreach its-history [
   ;;  if (item 1 ? = item 1 record) and (item 3 ?) >= (item 3 record) [ report true ] 
