@@ -463,14 +463,9 @@ to-report is-old [record]
 end
 
 to-report history-exists [its-history record]
-  let tmplist its-history
-  while [item 3 last tmplist >= item 3 record] [
-    if item 1 last tmplist = item 1 record [report true]
-    set tmplist but-last tmplist
+  foreach its-history [
+    if (item 1 ? = item 1 record) and (item 3 ?) >= (item 3 record) [ report true ] 
     ]
-  ;;foreach its-history [
-  ;;  if (item 1 ? = item 1 record) and (item 3 ?) >= (item 3 record) [ report true ] 
-  ;;  ]
   report false  
 end
 
@@ -1322,7 +1317,7 @@ INPUTBOX
 60
 105
 Netsize
-750
+500
 1
 0
 Number
@@ -1566,7 +1561,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-1
+0
 
 CHOOSER
 175
@@ -1699,7 +1694,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.0.1
+NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -2004,7 +1999,7 @@ initialize</setup>
       <value value="0"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="e6" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="e8" repetitions="1" runMetricsEveryStep="true">
     <setup>setup
 initialize</setup>
     <go>go</go>
@@ -2064,6 +2059,9 @@ initialize</setup>
     </enumeratedValueSet>
     <enumeratedValueSet variable="searching-steps">
       <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
