@@ -272,6 +272,8 @@ to-report on-sensing-movement [keep-history]
       set temprecord replace-item 0 temprecord [who] of ?
       set temprecord replace-item 1 temprecord ticks
       set m lput temprecord m
+      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
+      update-record msg keep-history
       
       set testresultline []
       set testresultline lput "," (lput item 0 temprecord testresultline)
@@ -279,17 +281,18 @@ to-report on-sensing-movement [keep-history]
       
       let hindex locate-record first temprecord
       if hindex >= 0 [
-        let previous last item hindex history
-        let predir CDC-dir (item 2 previous) bounding-box
-        ifelse not empty? (filter [member? ? zr] predir) [
-          set testresultline lput "," (lput TRUE testresultline)
+        let its-history item hindex history
+        let previous proper-previous-record its-history ticks
+        if not empty? previous [
+          let predir CDC-dir (item 2 previous) bounding-box
+          ifelse not empty? (filter [member? ? zr] predir) [
+            set testresultline lput "," (lput TRUE testresultline)
           ]
-        [
-          set testresultline lput "," (lput FALSE testresultline)
+          [
+            set testresultline lput "," (lput FALSE testresultline)
           ]
-        ] 
-      let msg (list item 0 temprecord who bounding-box item 1 temprecord)
-      update-record msg keep-history
+        ]
+      ] 
       set msgs lput msg msgs
       
       update-global-history msg
@@ -727,7 +730,15 @@ to-report proper-previous-record [its-history timestamp]
   ifelse empty? tmplist [
     report tmplist
     ] [
-    report last tmplist
+    let valid-record last tmplist
+    let desired-time item 3 valid-record
+    while [not empty? tmplist and item 3 last tmplist = desired-time] [
+      if item 1 (last tmplist) < item 1 valid-record [
+        set valid-record last tmplist
+        ]
+      set tmplist but-last tmplist
+      ]
+    report valid-record
     ]
 end
 
@@ -1235,21 +1246,24 @@ to decide-on-history [record]
     let its-history item location history
     if length its-history > 1 [
       let currentBBOX item 2 (last its-history)
-      let previousBBOX item 2 (last but-last its-history)
-      let predir CDC-dir previousBBOX currentBBOX
-      let curdir CDC-dir currentBBOX targetzone-boundingbox
-      ifelse not empty? (filter [member? ? predir] curdir) [
-        set testresultline lput TRUE testresultline
-        set testresultline lput "," testresultline
+      let previous-record proper-previous-record its-history item 3 (last its-history)
+      if not empty? previous-record [
+        let previousBBOX item 2 previous-record
+        let predir CDC-dir previousBBOX currentBBOX
+        let curdir CDC-dir currentBBOX targetzone-boundingbox
+        ifelse not empty? (filter [member? ? predir] curdir) [
+          set testresultline lput TRUE testresultline
+          set testresultline lput "," testresultline
         ] 
-      [
-        set testresultline lput FALSE testresultline
-        set testresultline lput "," testresultline
+        [
+          set testresultline lput FALSE testresultline
+          set testresultline lput "," testresultline
         ]
+      ]
       centralized-cdc-validation obj-id
       log-results testresultline
-      ]
     ]
+  ]
 end
 
 to-report max-path-length
@@ -1538,7 +1552,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-0
+1
 
 CHOOSER
 175
@@ -1548,7 +1562,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybird" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree"
-0
+5
 
 MONITOR
 215
@@ -1578,7 +1592,7 @@ INPUTBOX
 322
 790
 searching-steps
-3
+0
 1
 0
 Number
@@ -1660,7 +1674,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
