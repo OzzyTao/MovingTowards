@@ -699,7 +699,9 @@ to centralized-cdc-validation [obj-id]
     let its-history item location global-history
     if length its-history > 1 [
       let currentBBOX item 2 (last its-history)
-      let previousBBOX item 2 (last but-last its-history)
+      let previous-record proper-previous-record its-history item 3 (last its-history)
+      if not empty? previous-record [
+      let previousBBOX item 2 previous-record
       let predir CDC-dir previousBBOX currentBBOX
       let curdir CDC-dir currentBBOX targetzone-boundingbox
       ifelse not empty? (filter [member? ? predir] curdir) [
@@ -709,6 +711,19 @@ to centralized-cdc-validation [obj-id]
         set testresultline lput FALSE testresultline
         ]
       ]
+      ]
+    ]
+end
+
+to-report proper-previous-record [its-history timestamp]
+  let tmplist its-history
+  while [not empty? tmplist and item 3 last tmplist >= timestamp] [
+    set tmplist but-last tmplist
+    ] 
+  ifelse empty? tmplist [
+    report tmplist
+    ] [
+    report last tmplist
     ]
 end
 
@@ -1275,7 +1290,7 @@ INPUTBOX
 60
 105
 Netsize
-1000
+500
 1
 0
 Number
@@ -1529,7 +1544,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybird" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree"
-5
+0
 
 MONITOR
 215
