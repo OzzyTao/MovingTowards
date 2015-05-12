@@ -295,8 +295,10 @@ to-report on-sensing-movement [keep-history]
       ] 
       set msgs lput msg msgs
       
+      if ground-truth-check [
       update-global-history msg
       centralized-cdc-validation first msg
+      ]
       log-results testresultline
       set ct-event ct-event + 1
       ]
@@ -743,7 +745,9 @@ to-report proper-previous-record [its-history timestamp]
 end
 
 to log-results [logline]
-  if length logline > 6 [
+  let valid-length 4
+  if ground-truth-check [set valid-length 6]
+  if length logline > valid-length [
   ifelse output-to-file [
     file-open filename
     foreach logline [
@@ -1153,6 +1157,7 @@ to-report show-moving-towards
 end
 
 to-report show-true-moving-towards
+  if not ground-truth-check [report -1]
   if length testresultline > 6 [
     ifelse last testresultline [report 1] [report 0]
     ]
@@ -1222,7 +1227,9 @@ to step_DONE_TE
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
+        if ground-truth-check [
         update-global-history msg
+        ]
         send (fput "AEXT" msg) mote tree-parent
         ]
       ]
@@ -1260,7 +1267,9 @@ to decide-on-history [record]
           set testresultline lput "," testresultline
         ]
       ]
+      if ground-truth-check [
       centralized-cdc-validation obj-id
+      ]
       log-results testresultline
     ]
   ]
@@ -1552,7 +1561,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-0
+1
 
 CHOOSER
 175
@@ -1607,6 +1616,17 @@ CMR
 1
 0
 Number
+
+SWITCH
+170
+795
+352
+828
+ground-truth-check
+ground-truth-check
+1
+1
+-1000
 
 @#$#@#$#@
 ## PROTOCOL
@@ -1674,7 +1694,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
