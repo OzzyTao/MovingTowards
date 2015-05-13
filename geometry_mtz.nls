@@ -1,0 +1,378 @@
+
+to-report next-cyclic-neighbour [tangle]
+  let index 0
+  foreach neighbourhood [
+    if last ? > tangle and not member? ? towards-neighbour [
+      report ?
+      ]
+    set index index + 1
+    ]
+  set index 0
+  foreach neighbourhood [
+    if not member? ? towards-neighbour [
+      report ?
+      ]
+    set index index + 1
+    ]
+  report []
+end
+
+to-report next-reverse-cyclic-neighbour [tangle]
+  let reversed-neighbourhood reverse neighbourhood
+  let index 0
+  foreach reversed-neighbourhood [
+    if last ? < tangle and not member? ? towards-neighbour [
+      report ?
+      ] 
+    set index index + 1
+    ]
+  set index 0 
+  foreach reversed-neighbourhood [
+    if not member? ? towards-neighbour [
+      report ?
+      ]
+    set index index + 1
+    ]
+  report []
+end
+
+
+;; find neighbours in the direction similar to z-zone (two most similiar)
+to set-similar-neighbours
+  let tcenter_x (item 1 targetzone-boundingbox + item 3 targetzone-boundingbox) / 2
+  let tcenter_y (item 0 targetzone-boundingbox + item 2 targetzone-boundingbox) / 2
+  let tangle included-angle (list "target" tcenter_x tcenter_y)
+  let left-neighbour next-reverse-cyclic-neighbour tangle
+  let right-neighbour next-cyclic-neighbour tangle
+  ifelse first left-neighbour = first right-neighbour [
+    set similar-neighbour (list left-neighbour)
+    ]
+  [
+    set similar-neighbour list left-neighbour right-neighbour
+    ]
+end
+
+;; find neighbours based on cdc-dissimilarity
+to set-similar-neighbours-cdc [number]
+  let real_number 0
+  ifelse number > length neighbourhood [
+    set real_number length neighbourhood
+    ]
+  [
+    set real_number number
+    ]
+  let i 0
+  while [i < real_number] [
+    set similar-neighbour lput (item i neighbourhood) similar-neighbour
+    set i i + 1
+    ]
+end
+
+to-report distance-check [disk1 disk2]
+  let x0 item 1 disk1
+  let y0 item 2 disk1
+  let x1 item 1 disk2
+  let y1 item 2 disk2
+  let x2 (x0 + x1) / 2
+  let y2 (y0 + y1) / 2
+  let d sqrt ((x1 - x0) ^ 2 + (y1 - y0) ^ 2)
+  let h sqrt (s ^ 2 - (d / 2) ^ 2)
+  let x3 (x2 + h * (y1 - y0) / d)
+  let y3 (y2 - h * (x1 - x1) / d)
+  let x4 (x2 - h * (y1 - y0) / d)
+  let y4 (y2 + h * (x1 - x1) / d)
+  if sqrt ((x3 - xcor) ^ 2 + (y3 - ycor) ^ 2) < s and sqrt ((x4 - xcor) ^ 2 + (y4 - ycor) ^ 2) < s [
+    report FALSE
+    ]
+  report TRUE
+end
+
+;;direction based message routing
+to rank-neighbour-cdc-similarity
+  let index 0 
+  foreach neighbourhood [
+    let newrecord lput (cdc_dissimilarity bounding-box targetzone-boundingbox item 3 ?) ?
+    set neighbourhood replace-item index neighbourhood newrecord
+    set index index + 1
+    ]
+  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
+end
+
+to rank-neighbour-dir
+  let index 0
+  foreach neighbourhood [
+    let newrecord lput (included-angle ?) ?
+    set neighbourhood replace-item index neighbourhood newrecord
+    set index index + 1
+  ]
+  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
+end
+
+to set-towards-neighbours 
+  foreach neighbourhood [
+    let bbox item 3 ?
+    let nbcdc item 4 ?
+    let selfnbcdc CDC-dir bounding-box bbox
+    if not empty? (filter [member? ? nbcdc] selfnbcdc) [
+      set towards-neighbour lput ? towards-neighbour
+      ]
+    ]
+end
+
+
+to-report union-boundingbox [bba bbb]
+  let top_c max (list item 0 bba item 0 bbb)
+  let left_c min (list item 1 bba item 1 bbb)
+  let bottom_c min (list item 2 bba item 2 bbb)
+  let right_c max (list item 3 bba item 3 bbb)
+  report (list top_c left_c bottom_c right_c) 
+end
+
+to-report point-in-box [bbox]
+  ifelse ycor < item 0 bbox and xcor > item 1 bbox and ycor > item 2 bbox and xcor < item 3 bbox [
+    report TRUE
+    ] 
+  [
+    report FALSE
+    ]
+end
+
+to-report within-sensing-range [obj]
+  ifelse distance obj <= s [
+    report TRUE
+  ]
+  [ report FALSE ]
+end
+
+
+to-report random-box-right [boxsize]
+  report (random (world-width - boxsize)) - (world-width / 2 - boxsize)
+end
+
+to-report random-box-top [boxsize]
+  report (random (world-height - boxsize)) - (world-height / 2 - boxsize)
+end
+
+;; check whether a patch is within the convex hull defined by z-zone vertices
+to-report in-convex-hull
+  let thispatch self 
+  let degrees [ towards thispatch ] of tzonevertices
+  let lower filter [ ? <= 180 ] degrees
+  let upper filter [ ? > 180 ] degrees
+  if not empty? lower and not empty? upper and (360 + max lower) - min upper < 180 [report false]
+  report max degrees - min degrees >= 180
+end
+
+;; calculate a bounding box for a sensing region
+to-report bounding-box
+  let boundingbox [0 0 0 0]
+  set boundingbox replace-item 0 boundingbox (ycor + s)
+  set boundingbox replace-item 1 boundingbox (xcor - s)
+  set boundingbox replace-item 2 boundingbox (ycor - s)
+  set boundingbox replace-item 3 boundingbox (xcor + s)
+  report boundingbox
+end
+
+to set-target-bounding-box
+  set targetzone-boundingbox [0 0 0 0]
+  set targetzone-boundingbox replace-item 1 targetzone-boundingbox min [xcor] of tzonevertices
+  set targetzone-boundingbox replace-item 3 targetzone-boundingbox max [xcor] of tzonevertices
+  set targetzone-boundingbox replace-item 0 targetzone-boundingbox max [ycor] of tzonevertices
+  set targetzone-boundingbox replace-item 2 targetzone-boundingbox min [ycor] of tzonevertices
+end
+
+
+to-report CDC-dir [reference target]
+  let ref-top item 0 reference
+  let ref-left item 1 reference
+  let ref-bottom item 2 reference
+  let ref-right item 3 reference
+  let tar-top item 0 target
+  let tar-left item 1 target
+  let tar-bottom item 2 target
+  let tar-right item 3 target
+  let cdc []
+  if tar-left < ref-left [
+    if tar-top > ref-top [ set cdc lput "NW" cdc]
+    if tar-bottom < ref-bottom [set cdc lput "SW" cdc]
+    ]
+  if tar-right > ref-right [
+    if tar-top > ref-top [ set cdc lput "NE" cdc ]
+    if tar-bottom < ref-bottom [ set cdc lput "SE" cdc ]
+    ]
+  if tar-right > ref-left and tar-left < ref-right [
+    if tar-top > ref-top [set cdc lput "N" cdc ]
+    if tar-bottom < ref-bottom [set cdc lput "S" cdc ]
+    ]
+  if tar-top > ref-bottom and tar-bottom < ref-top [
+    if tar-left < ref-left [ set cdc lput "W" cdc ]
+    if tar-right > ref-right [ set cdc lput "E" cdc ]
+    ]
+  report cdc
+end
+
+to-report point-region-distance [point boundingbox]
+  let topcor item 0 boundingbox
+  let leftcor item 1 boundingbox
+  let bottomcor item 2 boundingbox
+  let rightcor item 3 boundingbox
+  let thisx first point
+  let thisy last point
+  if thisx >= leftcor and thisx <= rightcor and thisy >= bottomcor and thisy <= topcor [
+    report 0
+    ]
+  if thisx >= leftcor and thisx <= rightcor [
+    ifelse thisy > topcor [
+      report thisy - topcor
+      ]
+    [
+      report bottomcor - thisy
+      ]
+    ]
+  if thisy >= bottomcor and thisy <= topcor [
+    ifelse thisx > rightcor [
+      report thisx - rightcor
+      ]
+    [
+      report leftcor - thisx
+      ]
+    ]
+  let deltax 0
+  let deltay 0
+  ifelse thisx < leftcor [
+    set deltax thisx - leftcor
+    ]
+  [
+    set deltax thisx - rightcor
+    ]
+  ifelse thisy < bottomcor [
+    set deltay thisy - bottomcor
+    ]
+  [
+    set deltay thisy - topcor
+    ]
+  report sqrt (deltax ^ 2 + deltay ^ 2)
+end
+
+to-report is-surrounded 
+  let connectedcomponents []
+  let unaffectedcomponents []
+  let peddingcomponents []
+  let index 0 
+  foreach neighbourhood [
+    let newrecord lput (included-angle ?) ?
+    set neighbourhood replace-item index neighbourhood newrecord
+    set index index + 1
+  ]
+  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
+  foreach neighbourhood [
+    let disk ?
+    ifelse empty? connectedcomponents [
+      set connectedcomponents lput (list disk) connectedcomponents
+    ][
+      foreach connectedcomponents [
+        let result disk-component-relation disk ?
+        if result = "surrounded" [
+          report TRUE
+        ]
+        ifelse result = "connected" [
+          set peddingcomponents lput (lput disk ?) peddingcomponents
+        ][
+          set unaffectedcomponents lput ? unaffectedcomponents
+        ]
+      ]
+      ifelse empty? peddingcomponents [
+        set connectedcomponents lput (list disk) unaffectedcomponents
+        set unaffectedcomponents []
+      ][
+        set connectedcomponents lput (combine-connected-components peddingcomponents) unaffectedcomponents
+        set unaffectedcomponents []
+        set peddingcomponents []
+      ]
+    ]
+  ]
+  report FALSE
+end
+
+to-report included-angle [neighbour-disk]
+  let deltax (item 1 neighbour-disk) - xcor
+  let deltay (item 2 neighbour-disk) - ycor
+  report atan deltax deltay
+end
+
+to-report is-connected [diska diskb]
+  let deltax (item 1 diska) - (item 1 diskb)
+  let deltay (item 2 diska) - (item 2 diskb)
+  ifelse sqrt (deltax ^ 2 + deltay ^ 2) <= (s + s)[
+    report TRUE
+  ][
+    report FALSE
+  ]
+end
+
+to-report combine-connected-components [componentlist]
+  let resultcomponent []
+  while [length componentlist > 0] [
+    let smallestvalue 400
+    let smallestindex 0
+    let tindex 0
+    foreach componentlist [
+      let currentvalue item 3 first ?
+      if currentvalue < smallestvalue [
+        set smallestvalue currentvalue
+        set smallestindex tindex
+      ]
+      set tindex tindex + 1
+    ]
+
+    let thecomponent (item smallestindex componentlist)
+    set resultcomponent lput (first thecomponent) resultcomponent
+    ifelse length thecomponent = 1 [
+      set componentlist remove-item smallestindex componentlist
+      report resultcomponent
+    ][
+      set componentlist replace-item smallestindex componentlist (but-first thecomponent)
+    ]
+  ]
+  report resultcomponent
+end
+
+to-report to-left [point segstart segend]
+  let sign (first segend - first segstart) * (last point - last segstart) - (last segend - last segstart) * (first point - first segstart)
+  ifelse sign > 0 [
+    report TRUE
+  ][
+    report FALSE
+  ]
+end
+
+to-report disk-component-relation [disk component]
+  let connectedtostart FALSE
+  let connectedtoend FALSE
+
+  let cxcor item 1 disk
+  let cycor item 2 disk
+  foreach component [
+    let currentcenterx item 1 ?
+    let currentcentery item 2 ?
+    if is-connected disk ? and distance-check disk ? [
+      if to-left (list xcor ycor) (list currentcenterx currentcentery) (list cxcor cycor) [
+          set connectedtostart TRUE
+        ]
+      if to-left (list xcor ycor) (list cxcor cycor) (list currentcenterx currentcentery) [
+        set connectedtoend TRUE
+      ]
+    ]
+  ]
+
+  if connectedtoend and connectedtostart [
+    report "surrounded"
+  ]
+  ifelse connectedtoend [
+    report "connected"
+  ][
+    report "not-connected"
+  ]
+end
+
+

@@ -1,0 +1,138 @@
+;; record format (obj-id, sensor-id, bounding-box-of-that-sensor, timestamp)
+
+to-report record-objID [record]
+  report first record
+end
+
+to-report record-sensorID [record]
+  report item 1 record
+end
+
+to-report record-bbox [record]
+  report item 2 record
+end
+
+to-report record-timestamp [record]
+  report item 3 record
+end
+
+
+to update-global-history [record]
+  let obj-id first record
+  let location history-location global-history obj-id
+  ifelse location < 0 [
+    set global-history lput (list record) global-history
+    ]
+  [
+    let its-history item location global-history
+    set its-history lput record its-history
+    set global-history replace-item location global-history its-history
+    ]
+end
+
+;; when each table only keeps one most recent record about one specific object
+;; update local history with the new record
+to update-local-history [record keep-history]
+  let rindex locate-local-record first record
+  ifelse rindex < 0 [
+    set history lput (list record) history
+    ] 
+  [
+    ifelse keep-history = TRUE [
+      set history replace-item rindex history (lput record item rindex history)
+      ]
+    [
+      set history replace-item rindex history (list record)
+    ]
+  ]
+end
+
+to-report locate-local-record [obj-id]
+  let index 0
+  foreach history [
+    if record-objID first ? = obj-id [ report index ]
+    set index index + 1
+    ]
+  report -1
+end
+
+to-report is-old [record]
+  let rindex locate-local-record first record
+  if rindex < 0 [
+    report FALSE
+    ]
+  let its-history item rindex history
+  report history-exists its-history record 
+end
+
+to-report history-exists [its-history record]
+  let index (length its-history) - 1
+  while [index >= 0  and (record-timestamp item index its-history >= record-timestamp record) ] [
+    if record-sensorID item index its-history = record-sensorID record [report true]
+    set index index - 1
+    ]
+  report false  
+end
+
+to-report has-record [whichhistory obj-id]
+  foreach whichhistory [
+    if record-objID first ? = obj-id [ report true ]
+    ]
+  report false
+end
+
+;;to-report recent-record [its-history]
+;;  report last sort-by [record-timestamp ?1 < record-timestamp ?2] its-history
+;;end
+
+to-report history-location [whichhistory obj-id]
+  let index 0
+  foreach whichhistory [
+    if record-objID first ? = obj-id [ report index ]
+    set index index + 1
+    ]
+  report -1
+end
+
+
+to-report proper-previous-record [its-history timestamp]
+  let tmplist its-history
+  while [not empty? tmplist and record-timestamp last tmplist >= timestamp] [
+    set tmplist but-last tmplist
+    ] 
+  ifelse empty? tmplist [
+    report tmplist
+    ] 
+  [
+    let valid-record last tmplist
+    let desired-time record-timestamp valid-record
+    while [not empty? tmplist and record-timestamp last tmplist = desired-time] [
+      if record-sensorID (last tmplist) < record-sensorID valid-record [
+        set valid-record last tmplist
+        ]
+      set tmplist but-last tmplist
+      ]
+    report valid-record
+  ]
+end
+
+to log-results [logline]
+  let valid-length 4
+  if ground-truth-check [set valid-length 6]
+  if length logline > valid-length [
+  ifelse output-to-file [
+    file-open filename
+    foreach logline [
+      file-type ?
+      ]
+    file-print ""
+    ]
+  [
+    file-close-all
+    foreach logline [
+      type ?
+      ]
+    print ""
+    ] 
+  ]
+end

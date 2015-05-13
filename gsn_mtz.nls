@@ -677,3 +677,32 @@ end
 to-report show-ct-event
   report ct-event
 end
+
+  
+to-report next-seed
+  report (random 4294967296) - 2147483648
+end
+
+to-report show-moving-towards
+  if length testresultline > 6 [
+    ifelse item 4 testresultline [report 1] [report 0]
+    ]
+  report -1
+end
+
+to-report show-true-moving-towards
+  if not ground-truth-check [report -1]
+  if length testresultline > 6 [
+    ifelse last testresultline [report 1] [report 0]
+    ]
+  report -1
+end
+
+to-report max-path-length
+  ask motes [
+    if tree-depth > max-tree-depth [
+      set max-tree-depth tree-depth
+      ]
+    ]
+  report max-tree-depth
+end

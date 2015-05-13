@@ -1,4 +1,4 @@
-__includes["./gsn_mtz.nls" "./env_mtz.nls" "./btp_mtz.nls"]
+__includes["./gsn_mtz.nls" "./env_mtz.nls" "./btp_mtz.nls" "./geometry_mtz.nls" "./tabular_mtz.nls"]
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
 motes-own [m zr history neighbourhood towards-neighbour similar-neighbour tree-parent tree-depth]
@@ -117,6 +117,7 @@ to step
   if state = "DONE_TE" or state = "ROOT" [step_DONE_TE stop]
 end
 
+;; propogate information about zone of interest
 to step_INIZ
   broadcast (list "ZBOX" targetzone-boundingbox)
   if communicationstrategy = "Hybird" [
@@ -160,6 +161,8 @@ to step_INIT
     ]
 end
 
+;; hybird method
+;; neighbourhood exploration
 to step_XPNB
   broadcast (list "RANGE" who xcor ycor)
   become "WTNB"
@@ -187,16 +190,20 @@ to step_INER
   if has-message "OETR" [
     let msg received "OETR"
     let record but-first msg
-    update-record record FALSE
+    if not is-old record [
+      update-local-history record TRUE
+    ]
     ]
   
   if has-message "FLOD" [
     let msg received "FLOD"
     let record but-first msg
-    update-record record FALSE
+    if not is-old record [
+      update-local-history record TRUE
+    ]
     ]
   ;; on sensing an entering event
-  let msgs on-sensing-movement FALSE
+  let msgs on-sensing-movement TRUE
   foreach msgs [
     broadcast fput "OETR" ?
     ]
@@ -206,50 +213,231 @@ to step_BNDY
   if has-message "OETR" [
     let msg received "OETR"
     let record but-first msg
-    update-record record FALSE
+    if not is-old record [
+      update-local-history record TRUE
+    ]
     ]
   
   if has-message "FLOD" [
     let msg received "FLOD"
     let record but-first msg
     if not is-old record [
-      update-record record FALSE
+      update-local-history record TRUE
       broadcast msg
       ]
     ]
   ;; on sensing an entering event
-  let msgs on-sensing-movement FALSE
+  let msgs on-sensing-movement TRUE
   foreach msgs [
     broadcast fput "FLOD" ?
     ]
 end
 
+;; flooding method
 to step_IDLE
   ;; when receieve a message AEXT
   if has-message "AEXT" [
     let msg received "AEXT"
     let steps last msg
     let record but-last (but-first msg)
-    let location history-location first record
-    ifelse location < 0 [
-      set history lput (lput record []) history
+    if not is-old record [
+      update-local-history record TRUE
       if (searching-steps != 0 and steps < searching-steps) or searching-steps = 0 
       [ broadcast lput (steps + 1) (fput "AEXT" record) ]
+    ]
+  ]  
+  let msgs on-sensing-movement TRUE
+  foreach msgs [
+    broadcast lput 1 (fput "AEXT" ?)
+    ]
+end
+
+
+;; direction-based method
+to step_INIT_DB
+  broadcast (list "RANGE" who xcor ycor bounding-box zr)
+  become "WAIT_DB"
+end
+
+to step_WAIT_DB
+  if has-message "RANGE" [
+    let msg received "RANGE"
+    let record but-first msg
+    set neighbourhood lput record neighbourhood
+    ]
+  if length neighbourhood = count comlink-neighbors [
+    ifelse communicationstrategy = "CDC-similarity" [
+      rank-neighbour-cdc-similarity
+      set-towards-neighbours
+      if length neighbourhood != length towards-neighbour [
+        set-similar-neighbours-cdc 2
+        ]
       ]
     [
-      let its-history item location history
-      if not history-exists its-history record [
-        set its-history lput record its-history
-        set history replace-item location history its-history
-        if (searching-steps != 0 and steps < searching-steps) or searching-steps = 0 
-        [ broadcast lput (steps + 1) (fput "AEXT" record) ]
-        ] 
+      rank-neighbour-dir
+      set-towards-neighbours
+      if length neighbourhood != length towards-neighbour [
+        set-similar-neighbours
       ]
+    ]
+    become "IDLE_DB"
+    ]
+end
+
+
+to step_IDLE_DB
+  if has-message "AEXT" [
+    let msg received "AEXT"
+    let targets last msg
+    let towards-targets last but-last msg
+    let record but-first but-last but-last msg
+    if not is-old record [
+      update-local-history record TRUE
+      if member? who targets or empty? targets [
+        set msg lput (map [first ?] towards-neighbour) (fput "AEXT" record)
+        ifelse member? who towards-targets [
+          multicast msg []
+          ]
+        [
+          ifelse empty? towards-neighbour [
+            multicast msg (map [first ?] similar-neighbour)
+            ] 
+          [
+            multicast msg (map [first ?] towards-neighbour)
+            ]
+          ]
+        ask patch-here [set pcolor black]
+        ]
+      ]
+    ]
+
+  let msgs on-sensing-movement TRUE
+  foreach msgs [
+    let tmpmsg ?
+    let msg lput (map [first ?] towards-neighbour) (fput "AEXT" tmpmsg)
+    ifelse empty? towards-neighbour [
+        multicast msg (map [first ?] similar-neighbour)
+        ] 
+      [
+        multicast msg (map [first ?] towards-neighbour)
+        ]
+      ]
+end
+
+;; if targets is an empty list, the msg will be broadcasted
+to multicast [msg targets]
+  broadcast (lput targets msg)
+end
+
+;; direct-neighbour-based method
+to step_IDLE_NB
+  ;; when receieve a message AEXT
+  if has-message "AEXT" [
+    let msg received "AEXT"
+    let record but-first msg
+    update-local-history record False
     ]
   
   let msgs on-sensing-movement TRUE
   foreach msgs [
-    broadcast lput 1 (fput "AEXT" ?)
+    broadcast fput "AEXT" ?
+    ]
+end 
+
+
+;; centralized method : shortest path tree
+to step_ROOT_TE 
+  ask comlinks [ hide-link ]
+  set tree-parent -1
+  set tree-depth 0
+  broadcast (list "TREE" who tree-depth)
+  become "ROOT"
+end
+
+to step_IDLE_TE
+  if has-message "TREE" [
+    let msg received "TREE"
+    set tree-parent item 1 msg
+    ask comlink who tree-parent [show-link]
+    set tree-depth item 2 msg + 1
+    broadcast (list "TREE" who tree-depth)
+    become "DONE_TE"
+    ]
+end
+
+to step_DONE_TE
+  if has-message "TREE" [
+    let msg received "TREE"
+    if item 2 msg + 1 < tree-depth [
+      ask comlink who tree-parent [hide-link]
+      set tree-parent item 1 msg
+      ask comlink who tree-parent [show-link]
+      set tree-depth item 2 msg + 1
+      broadcast (list "TREE" who tree-depth)
+      ]
+    ]
+  
+  if has-message "AEXT" [
+    let msg received "AEXT"
+    ifelse tree-parent = -1 [
+      let record but-first msg
+      decide-on-history record
+      ]
+    [
+      send msg mote tree-parent
+      ] 
+    ]
+  
+  ;; on sensing entering event
+  ifelse tree-parent = -1 [
+    let msgs on-sensing-movement TRUE
+    ]
+  [
+    let sensor self
+    let in-range-objects objects with [within-sensing-range sensor]
+    ;;ifelse count in-range-objects > 0 [
+    ;;  highlight-sensing-range
+    ;;  ]
+    ;;[
+    ;;  clear-sensing-range
+    ;;  ]
+    foreach sort in-range-objects [
+      if which-active-record [who] of ? = -1 [
+        let temprecord (list "NULL" 0 "NULL")
+        set temprecord replace-item 0 temprecord [who] of ?
+        set temprecord replace-item 1 temprecord ticks
+        set m lput temprecord m
+        let msg (list first temprecord who bounding-box item 1 temprecord)
+        if ground-truth-check [
+        update-global-history msg
+        ]
+        send (fput "AEXT" msg) mote tree-parent
+        ]
+      ]
+    close-inactive-records
+    ]
+end
+
+
+to centralized-cdc-validation [obj-id]
+  let location history-location global-history obj-id
+  if location >= 0 [
+    let its-history item location global-history
+    if length its-history > 1 [
+      let currentBBOX record-bbox (last its-history)
+      let previous-record proper-previous-record its-history record-timestamp (last its-history)
+      if not empty? previous-record [
+      let previousBBOX record-bbox previous-record
+      let predir CDC-dir previousBBOX currentBBOX
+      let curdir CDC-dir currentBBOX targetzone-boundingbox
+      ifelse not empty? (filter [member? ? predir] curdir) [
+        set testresultline lput TRUE testresultline
+        ] 
+      [
+        set testresultline lput FALSE testresultline
+        ]
+      ]
+      ]
     ]
 end
 
@@ -259,12 +447,14 @@ to-report on-sensing-movement [keep-history]
   let msgs []
   let sensor self
   let in-range-objects objects with [within-sensing-range sensor]
-  ifelse count in-range-objects > 0 [
-    highlight-sensing-range
-    ]
-  [
-    clear-sensing-range
-    ]
+  
+  ;;visual effect
+  ;;ifelse count in-range-objects > 0 [
+  ;;  highlight-sensing-range
+  ;;  ]
+  ;;[
+  ;;  clear-sensing-range
+  ;;  ]
   
   foreach sort in-range-objects [
     if which-active-record [who] of ? = -1 [
@@ -273,13 +463,13 @@ to-report on-sensing-movement [keep-history]
       set temprecord replace-item 1 temprecord ticks
       set m lput temprecord m
       let msg (list item 0 temprecord who bounding-box item 1 temprecord)
-      update-record msg keep-history
+      update-local-history msg keep-history
       
       set testresultline []
       set testresultline lput "," (lput item 0 temprecord testresultline)
       set testresultline lput "," (lput item 1 temprecord testresultline)
       
-      let hindex locate-record first temprecord
+      let hindex locate-local-record first temprecord
       if hindex >= 0 [
         let its-history item hindex history
         let previous proper-previous-record its-history ticks
@@ -305,6 +495,37 @@ to-report on-sensing-movement [keep-history]
     ]
   close-inactive-records
   report msgs
+end
+
+to decide-on-history [record]
+  let obj-id first record
+  update-local-history record TRUE
+  let location locate-local-record obj-id
+  if location >= 0 [
+    set testresultline (list obj-id "," (last record) ",")
+    let its-history item location history
+    if length its-history > 1 [
+      let currentBBOX record-bbox (last its-history)
+      let previous-record proper-previous-record its-history record-timestamp (last its-history)
+      if not empty? previous-record [
+        let previousBBOX record-bbox previous-record
+        let predir CDC-dir previousBBOX currentBBOX
+        let curdir CDC-dir currentBBOX targetzone-boundingbox
+        ifelse not empty? (filter [member? ? predir] curdir) [
+          set testresultline lput TRUE testresultline
+          set testresultline lput "," testresultline
+        ] 
+        [
+          set testresultline lput FALSE testresultline
+          set testresultline lput "," testresultline
+        ]
+      ]
+      if ground-truth-check [
+      centralized-cdc-validation obj-id
+      ]
+      log-results testresultline
+    ]
+  ]
 end
 
 ;; Move object (based on modified correlated random walk)
@@ -344,12 +565,7 @@ to object-tails
   ]
 end
 
-to-report within-sensing-range [obj]
-  ifelse distance obj <= s [
-    report TRUE
-  ]
-  [ report FALSE ]
-end
+
 
 to highlight-sensing-range
   ;ask patches in-radius s [
@@ -387,112 +603,8 @@ to close-inactive-records
     ]
 end
 
-to-report random-box-right [boxsize]
-  report (random (world-width - boxsize)) - (world-width / 2 - boxsize)
-end
-
-to-report random-box-top [boxsize]
-  report (random (world-height - boxsize)) - (world-height / 2 - boxsize)
-end
-
-;; check whether a patch is within the convex hull defined by z-zone vertices
-to-report in-convex-hull
-  let thispatch self 
-  let degrees [ towards thispatch ] of tzonevertices
-  let lower filter [ ? <= 180 ] degrees
-  let upper filter [ ? > 180 ] degrees
-  if not empty? lower and not empty? upper and (360 + max lower) - min upper < 180 [report false]
-  report max degrees - min degrees >= 180
-end
-
-;; calculate a bounding box for a sensing region
-to-report bounding-box
-  let boundingbox [0 0 0 0]
-  set boundingbox replace-item 0 boundingbox (ycor + s)
-  set boundingbox replace-item 1 boundingbox (xcor - s)
-  set boundingbox replace-item 2 boundingbox (ycor - s)
-  set boundingbox replace-item 3 boundingbox (xcor + s)
-  report boundingbox
-end
-
-to set-target-bounding-box
-  set targetzone-boundingbox [0 0 0 0]
-  set targetzone-boundingbox replace-item 1 targetzone-boundingbox min [xcor] of tzonevertices
-  set targetzone-boundingbox replace-item 3 targetzone-boundingbox max [xcor] of tzonevertices
-  set targetzone-boundingbox replace-item 0 targetzone-boundingbox max [ycor] of tzonevertices
-  set targetzone-boundingbox replace-item 2 targetzone-boundingbox min [ycor] of tzonevertices
-end
 
 
-to-report CDC-dir [reference target]
-  let ref-top item 0 reference
-  let ref-left item 1 reference
-  let ref-bottom item 2 reference
-  let ref-right item 3 reference
-  let tar-top item 0 target
-  let tar-left item 1 target
-  let tar-bottom item 2 target
-  let tar-right item 3 target
-  let cdc []
-  if tar-left < ref-left [
-    if tar-top > ref-top [ set cdc lput "NW" cdc]
-    if tar-bottom < ref-bottom [set cdc lput "SW" cdc]
-    ]
-  if tar-right > ref-right [
-    if tar-top > ref-top [ set cdc lput "NE" cdc ]
-    if tar-bottom < ref-bottom [ set cdc lput "SE" cdc ]
-    ]
-  if tar-right > ref-left and tar-left < ref-right [
-    if tar-top > ref-top [set cdc lput "N" cdc ]
-    if tar-bottom < ref-bottom [set cdc lput "S" cdc ]
-    ]
-  if tar-top > ref-bottom and tar-bottom < ref-top [
-    if tar-left < ref-left [ set cdc lput "W" cdc ]
-    if tar-right > ref-right [ set cdc lput "E" cdc ]
-    ]
-  report cdc
-end
-
-to-report is-old [record]
-  let rindex locate-record first record
-  if rindex < 0 [
-    report FALSE
-    ]
-  let its-history item rindex history
-  report history-exists its-history record 
-end
-
-to-report history-exists [its-history record]
-  let index length its-history - 1
-  while [index >= 0  and (item 3 item index its-history >= item 3 record) ] [
-    if item 1 item index its-history = item 1 record [report true]
-    set index index - 1
-    ]
-  ;;foreach its-history [
-  ;;  if (item 1 ? = item 1 record) and (item 3 ?) >= (item 3 record) [ report true ] 
-  ;;  ]
-  report false  
-end
-
-to-report has-record [obj-id]
-  foreach history [
-    if item 0 ? = obj-id [ report true ]
-    ]
-  report false
-end
-
-to-report recent-record [its-history]
-  report last sort-by [item 3 ?1 < item 3 ?2] its-history
-end
-
-to-report history-location [obj-id]
-  let index 0
-  foreach history [
-    if first first ? = obj-id [ report index ]
-    set index index + 1
-    ]
-  report -1
-end
 
 to display-history
   clear-output
@@ -509,48 +621,6 @@ to display-history
     ]
 end
 
-to-report point-region-distance [point boundingbox]
-  let topcor item 0 boundingbox
-  let leftcor item 1 boundingbox
-  let bottomcor item 2 boundingbox
-  let rightcor item 3 boundingbox
-  let thisx first point
-  let thisy last point
-  if thisx >= leftcor and thisx <= rightcor and thisy >= bottomcor and thisy <= topcor [
-    report 0
-    ]
-  if thisx >= leftcor and thisx <= rightcor [
-    ifelse thisy > topcor [
-      report thisy - topcor
-      ]
-    [
-      report bottomcor - thisy
-      ]
-    ]
-  if thisy >= bottomcor and thisy <= topcor [
-    ifelse thisx > rightcor [
-      report thisx - rightcor
-      ]
-    [
-      report leftcor - thisx
-      ]
-    ]
-  let deltax 0
-  let deltay 0
-  ifelse thisx < leftcor [
-    set deltax thisx - leftcor
-    ]
-  [
-    set deltax thisx - rightcor
-    ]
-  ifelse thisy < bottomcor [
-    set deltay thisy - bottomcor
-    ]
-  [
-    set deltay thisy - topcor
-    ]
-  report sqrt (deltax ^ 2 + deltay ^ 2)
-end
 
 to report-true-dir
   let currentdis point-region-distance (list xcor ycor) targetzone-boundingbox
@@ -680,613 +750,6 @@ to adjust-mote-grid [bbox]
   ask item 5 motegridanchor-list [setxy max-pxcor topcor]
   ask item 6 motegridanchor-list [setxy rightcor max-pycor]
   ask item 7 motegridanchor-list [setxy leftcor max-pycor]
-end
-
-to update-global-history [record]
-  let obj-id first record
-  let location -1
-  let index 0
-  foreach global-history [
-    if first first ? = obj-id [set location index]
-    set index index + 1
-    ]
-  ifelse location < 0 [
-    set global-history lput (lput record []) global-history
-    ]
-  [
-    let its-history item location global-history
-    if not history-exists its-history record [
-        set its-history lput record its-history
-        set global-history replace-item location global-history its-history
-        ] 
-    ]
-end
-
-to centralized-cdc-validation [obj-id]
-  let location -1
-  let index 0
-  foreach global-history [
-    if first first ? = obj-id [set location index]
-    set index index + 1
-    ]
-  if location >= 0 [
-    let its-history item location global-history
-    if length its-history > 1 [
-      let currentBBOX item 2 (last its-history)
-      let previous-record proper-previous-record its-history item 3 (last its-history)
-      if not empty? previous-record [
-      let previousBBOX item 2 previous-record
-      let predir CDC-dir previousBBOX currentBBOX
-      let curdir CDC-dir currentBBOX targetzone-boundingbox
-      ifelse not empty? (filter [member? ? predir] curdir) [
-        set testresultline lput TRUE testresultline
-        ] 
-      [
-        set testresultline lput FALSE testresultline
-        ]
-      ]
-      ]
-    ]
-end
-
-to-report proper-previous-record [its-history timestamp]
-  let tmplist its-history
-  while [not empty? tmplist and item 3 last tmplist >= timestamp] [
-    set tmplist but-last tmplist
-    ] 
-  ifelse empty? tmplist [
-    report tmplist
-    ] [
-    let valid-record last tmplist
-    let desired-time item 3 valid-record
-    while [not empty? tmplist and item 3 last tmplist = desired-time] [
-      if item 1 (last tmplist) < item 1 valid-record [
-        set valid-record last tmplist
-        ]
-      set tmplist but-last tmplist
-      ]
-    report valid-record
-    ]
-end
-
-to log-results [logline]
-  let valid-length 4
-  if ground-truth-check [set valid-length 6]
-  if length logline > valid-length [
-  ifelse output-to-file [
-    file-open filename
-    foreach logline [
-      file-type ?
-      ]
-    file-print ""
-    ]
-  [
-    file-close-all
-    foreach logline [
-      type ?
-      ]
-    print ""
-    ] 
-  ]
-end
-
-
-to-report is-surrounded 
-  let connectedcomponents []
-  let unaffectedcomponents []
-  let peddingcomponents []
-  let index 0 
-  foreach neighbourhood [
-    let newrecord lput (included-angle ?) ?
-    set neighbourhood replace-item index neighbourhood newrecord
-    set index index + 1
-  ]
-  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
-  foreach neighbourhood [
-    let disk ?
-    ifelse empty? connectedcomponents [
-      set connectedcomponents lput (list disk) connectedcomponents
-    ][
-      foreach connectedcomponents [
-        let result disk-component-relation disk ?
-        if result = "surrounded" [
-          report TRUE
-        ]
-        ifelse result = "connected" [
-          set peddingcomponents lput (lput disk ?) peddingcomponents
-        ][
-          set unaffectedcomponents lput ? unaffectedcomponents
-        ]
-      ]
-      ifelse empty? peddingcomponents [
-        set connectedcomponents lput (list disk) unaffectedcomponents
-        set unaffectedcomponents []
-      ][
-        set connectedcomponents lput (combine-connected-components peddingcomponents) unaffectedcomponents
-        set unaffectedcomponents []
-        set peddingcomponents []
-      ]
-    ]
-  ]
-  report FALSE
-end
-
-to-report included-angle [neighbour-disk]
-  let deltax (item 1 neighbour-disk) - xcor
-  let deltay (item 2 neighbour-disk) - ycor
-  report atan deltax deltay
-end
-
-to-report is-connected [diska diskb]
-  let deltax (item 1 diska) - (item 1 diskb)
-  let deltay (item 2 diska) - (item 2 diskb)
-  ifelse sqrt (deltax ^ 2 + deltay ^ 2) <= (s + s)[
-    report TRUE
-  ][
-    report FALSE
-  ]
-end
-
-to-report combine-connected-components [componentlist]
-  let resultcomponent []
-  while [length componentlist > 0] [
-    let smallestvalue 400
-    let smallestindex 0
-    let tindex 0
-    foreach componentlist [
-      let currentvalue item 3 first ?
-      if currentvalue < smallestvalue [
-        set smallestvalue currentvalue
-        set smallestindex tindex
-      ]
-      set tindex tindex + 1
-    ]
-
-    let thecomponent (item smallestindex componentlist)
-    set resultcomponent lput (first thecomponent) resultcomponent
-    ifelse length thecomponent = 1 [
-      set componentlist remove-item smallestindex componentlist
-      report resultcomponent
-    ][
-      set componentlist replace-item smallestindex componentlist (but-first thecomponent)
-    ]
-  ]
-  report resultcomponent
-end
-
-to-report to-left [point segstart segend]
-  let sign (first segend - first segstart) * (last point - last segstart) - (last segend - last segstart) * (first point - first segstart)
-  ifelse sign > 0 [
-    report TRUE
-  ][
-    report FALSE
-  ]
-end
-
-to-report disk-component-relation [disk component]
-  let connectedtostart FALSE
-  let connectedtoend FALSE
-
-  let cxcor item 1 disk
-  let cycor item 2 disk
-  foreach component [
-    let currentcenterx item 1 ?
-    let currentcentery item 2 ?
-    if is-connected disk ? and distance-check disk ? [
-      if to-left (list xcor ycor) (list currentcenterx currentcentery) (list cxcor cycor) [
-          set connectedtostart TRUE
-        ]
-      if to-left (list xcor ycor) (list cxcor cycor) (list currentcenterx currentcentery) [
-        set connectedtoend TRUE
-      ]
-    ]
-  ]
-
-  if connectedtoend and connectedtostart [
-    report "surrounded"
-  ]
-  ifelse connectedtoend [
-    report "connected"
-  ][
-    report "not-connected"
-  ]
-end
-
-;; when each table only keeps one most recent record about one specific object
-to update-record [record keep-history]
-  let rindex locate-record first record
-  
-  ifelse rindex < 0 [
-    set history lput (list record) history
-    ] [
-    ifelse keep-history = TRUE [
-      set history replace-item rindex history (lput record item rindex history)
-      ]
-    [
-      set history replace-item rindex history (list record)
-    ]
-    ]
-end
-
-to-report locate-record [obj-id]
-  let index 0
-  foreach history [
-    if first first ? = obj-id [ report index ]
-    set index index + 1
-    ]
-  report -1
-end
-  
-to-report next-seed
-  report (random 4294967296) - 2147483648
-end
-
-to-report distance-check [disk1 disk2]
-  let x0 item 1 disk1
-  let y0 item 2 disk1
-  let x1 item 1 disk2
-  let y1 item 2 disk2
-  let x2 (x0 + x1) / 2
-  let y2 (y0 + y1) / 2
-  let d sqrt ((x1 - x0) ^ 2 + (y1 - y0) ^ 2)
-  let h sqrt (s ^ 2 - (d / 2) ^ 2)
-  let x3 (x2 + h * (y1 - y0) / d)
-  let y3 (y2 - h * (x1 - x1) / d)
-  let x4 (x2 - h * (y1 - y0) / d)
-  let y4 (y2 + h * (x1 - x1) / d)
-  if sqrt ((x3 - xcor) ^ 2 + (y3 - ycor) ^ 2) < s and sqrt ((x4 - xcor) ^ 2 + (y4 - ycor) ^ 2) < s [
-    report FALSE
-    ]
-  report TRUE
-end
-
-;;direction based message routing
-to rank-neighbour-cdc-similarity
-  let index 0 
-  foreach neighbourhood [
-    let newrecord lput (cdc_dissimilarity bounding-box targetzone-boundingbox item 3 ?) ?
-    set neighbourhood replace-item index neighbourhood newrecord
-    set index index + 1
-    ]
-  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
-end
-
-to rank-neighbour-dir
-  let index 0
-  foreach neighbourhood [
-    let newrecord lput (included-angle ?) ?
-    set neighbourhood replace-item index neighbourhood newrecord
-    set index index + 1
-  ]
-  set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
-end
-
-to set-towards-neighbours 
-  foreach neighbourhood [
-    let bbox item 3 ?
-    let nbcdc item 4 ?
-    let selfnbcdc CDC-dir bounding-box bbox
-    if not empty? (filter [member? ? nbcdc] selfnbcdc) [
-      set towards-neighbour lput ? towards-neighbour
-      ]
-    ]
-end
-
-to step_INIT_DB
-  broadcast (list "RANGE" who xcor ycor bounding-box zr)
-  become "WAIT_DB"
-end
-
-to step_WAIT_DB
-  if has-message "RANGE" [
-    let msg received "RANGE"
-    let record but-first msg
-    set neighbourhood lput record neighbourhood
-    ]
-  if length neighbourhood = count comlink-neighbors [
-    ifelse communicationstrategy = "CDC-similarity" [
-      rank-neighbour-cdc-similarity
-      set-towards-neighbours
-      if length neighbourhood != length towards-neighbour [
-        set-similar-neighbours-cdc 2
-        ]
-      ]
-    [
-      rank-neighbour-dir
-      set-towards-neighbours
-      if length neighbourhood != length towards-neighbour [
-        set-similar-neighbours
-      ]
-    ]
-    become "IDLE_DB"
-    ]
-end
-
-to-report union-boundingbox [bba bbb]
-  let top_c max (list item 0 bba item 0 bbb)
-  let left_c min (list item 1 bba item 1 bbb)
-  let bottom_c min (list item 2 bba item 2 bbb)
-  let right_c max (list item 3 bba item 3 bbb)
-  report (list top_c left_c bottom_c right_c) 
-end
-
-to-report point-in-box [bbox]
-  ifelse ycor < item 0 bbox and xcor > item 1 bbox and ycor > item 2 bbox and xcor < item 3 bbox [
-    report TRUE
-    ] 
-  [
-    report FALSE
-    ]
-end
-
-;; find neighbours in the direction similar to z-zone (two most similiar)
-to set-similar-neighbours
-  let tcenter_x (item 1 targetzone-boundingbox + item 3 targetzone-boundingbox) / 2
-  let tcenter_y (item 0 targetzone-boundingbox + item 2 targetzone-boundingbox) / 2
-  let tangle included-angle (list "target" tcenter_x tcenter_y)
-  let left-neighbour next-reverse-cyclic-neighbour tangle
-  let right-neighbour next-cyclic-neighbour tangle
-  ifelse first left-neighbour = first right-neighbour [
-    set similar-neighbour (list left-neighbour)
-    ]
-  [
-    set similar-neighbour list left-neighbour right-neighbour
-    ]
-end
-
-to set-similar-neighbours-cdc [number]
-  let real_number 0
-  ifelse number > length neighbourhood [
-    set real_number length neighbourhood
-    ]
-  [
-    set real_number number
-    ]
-  let i 0
-  while [i < real_number] [
-    set similar-neighbour lput (item i neighbourhood) similar-neighbour
-    set i i + 1
-    ]
-end
-
-to-report next-cyclic-neighbour [tangle]
-  let index 0
-  foreach neighbourhood [
-    if last ? > tangle and not member? ? towards-neighbour [
-      report ?
-      ]
-    set index index + 1
-    ]
-  set index 0
-  foreach neighbourhood [
-    if not member? ? towards-neighbour [
-      report ?
-      ]
-    set index index + 1
-    ]
-  report []
-end
-
-to-report next-reverse-cyclic-neighbour [tangle]
-  let reversed-neighbourhood reverse neighbourhood
-  let index 0
-  foreach reversed-neighbourhood [
-    if last ? < tangle and not member? ? towards-neighbour [
-      report ?
-      ] 
-    set index index + 1
-    ]
-  set index 0 
-  foreach reversed-neighbourhood [
-    if not member? ? towards-neighbour [
-      report ?
-      ]
-    set index index + 1
-    ]
-  report []
-end
-
-to step_IDLE_DB
-  ;;"BCST" and "TOZZ"
-  if has-message "BCST" [
-    let msg received "BCST"
-    let record but-first msg
-    if not is-old record [
-      update-record record FALSE
-      foreach towards-neighbour [
-        send msg mote first ?
-        ]
-      foreach neighbourhood [
-        if not member? ? towards-neighbour [
-          send (replace-item 0 msg "TOZZ") mote first ?
-          ]
-        ]
-      ask patch-here [set pcolor yellow]
-      ]
-    ]
-  
-  if has-message "TOZZ" [
-    let msg received "TOZZ"
-    let record but-first msg
-    if not is-old record [
-      update-record record FALSE
-      ifelse empty? towards-neighbour and length neighbourhood > 1 [
-        foreach similar-neighbour [
-          send msg mote first ?
-          ]
-        ] 
-      [
-        foreach towards-neighbour [
-          send (replace-item 0 msg "BCST") mote first ?
-          ]
-        ]
-      ask patch-here [set pcolor black]
-      ]
-    ]
-  
-  let msgs on-sensing-movement FALSE
-  foreach msgs [
-    let tmpmsg ?
-    ifelse empty? towards-neighbour [
-        foreach similar-neighbour [
-          send (fput "TOZZ" tmpmsg) mote first ?
-          ]
-        ] 
-      [
-        foreach towards-neighbour [
-          send (fput "BCST" tmpmsg) mote first ?
-          ]
-        ]
-      ]
-end
-
-to step_IDLE_NB
-  ;; when receieve a message AEXT
-  if has-message "AEXT" [
-    let msg received "AEXT"
-    let record but-first msg
-    update-record record False
-    ]
-  
-  let msgs on-sensing-movement TRUE
-  foreach msgs [
-    broadcast fput "AEXT" ?
-    ]
-end 
-
-to-report show-moving-towards
-  if length testresultline > 6 [
-    ifelse item 4 testresultline [report 1] [report 0]
-    ]
-  report -1
-end
-
-to-report show-true-moving-towards
-  if not ground-truth-check [report -1]
-  if length testresultline > 6 [
-    ifelse last testresultline [report 1] [report 0]
-    ]
-  report -1
-end
-
-;; centralized method : shortest path tree
-to step_ROOT_TE 
-  ask comlinks [ hide-link ]
-  set tree-parent -1
-  set tree-depth 0
-  broadcast (list "TREE" who tree-depth)
-  become "ROOT"
-end
-
-to step_IDLE_TE
-  if has-message "TREE" [
-    let msg received "TREE"
-    set tree-parent item 1 msg
-    ask comlink who tree-parent [show-link]
-    set tree-depth item 2 msg + 1
-    broadcast (list "TREE" who tree-depth)
-    become "DONE_TE"
-    ]
-end
-
-to step_DONE_TE
-  if has-message "TREE" [
-    let msg received "TREE"
-    if item 2 msg + 1 < tree-depth [
-      ask comlink who tree-parent [hide-link]
-      set tree-parent item 1 msg
-      ask comlink who tree-parent [show-link]
-      set tree-depth item 2 msg + 1
-      broadcast (list "TREE" who tree-depth)
-      ]
-    ]
-  
-  if has-message "AEXT" [
-    let msg received "AEXT"
-    ifelse tree-parent = -1 [
-      let record but-first msg
-      decide-on-history record
-      ]
-    [
-      send msg mote tree-parent
-      ] 
-    ]
-  
-  ;; on sensing entering event
-  ifelse tree-parent = -1 [
-    let msgs on-sensing-movement TRUE
-    ]
-  [
-    let sensor self
-    let in-range-objects objects with [within-sensing-range sensor]
-    ifelse count in-range-objects > 0 [
-      highlight-sensing-range
-      ]
-    [
-      clear-sensing-range
-      ]
-    foreach sort in-range-objects [
-      if which-active-record [who] of ? = -1 [
-        let temprecord (list "NULL" 0 "NULL")
-        set temprecord replace-item 0 temprecord [who] of ?
-        set temprecord replace-item 1 temprecord ticks
-        set m lput temprecord m
-        let msg (list first temprecord who bounding-box item 1 temprecord)
-        if ground-truth-check [
-        update-global-history msg
-        ]
-        send (fput "AEXT" msg) mote tree-parent
-        ]
-      ]
-    close-inactive-records
-    ]
-end
-
-
-to decide-on-history [record]
-  let obj-id first record
-  update-record record TRUE
-  let location -1
-  let index 0
-  foreach history [
-    if first first ? = obj-id [set location index]
-    set index index + 1
-    ]
-  
-  if location >= 0 [
-    set testresultline (list obj-id "," (last record) ",")
-    let its-history item location history
-    if length its-history > 1 [
-      let currentBBOX item 2 (last its-history)
-      let previous-record proper-previous-record its-history item 3 (last its-history)
-      if not empty? previous-record [
-        let previousBBOX item 2 previous-record
-        let predir CDC-dir previousBBOX currentBBOX
-        let curdir CDC-dir currentBBOX targetzone-boundingbox
-        ifelse not empty? (filter [member? ? predir] curdir) [
-          set testresultline lput TRUE testresultline
-          set testresultline lput "," testresultline
-        ] 
-        [
-          set testresultline lput FALSE testresultline
-          set testresultline lput "," testresultline
-        ]
-      ]
-      if ground-truth-check [
-      centralized-cdc-validation obj-id
-      ]
-      log-results testresultline
-    ]
-  ]
-end
-
-to-report max-path-length
-  ask motes [
-    if tree-depth > max-tree-depth [
-      set max-tree-depth tree-depth
-      ]
-    ]
-  report max-tree-depth
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -1576,7 +1039,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybird" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree"
-0
+2
 
 MONITOR
 215
@@ -2004,7 +1467,7 @@ initialize</setup>
       <value value="0"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="e6" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="e8" repetitions="1" runMetricsEveryStep="true">
     <setup>setup
 initialize</setup>
     <go>go</go>
@@ -2064,6 +1527,9 @@ initialize</setup>
     </enumeratedValueSet>
     <enumeratedValueSet variable="searching-steps">
       <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
