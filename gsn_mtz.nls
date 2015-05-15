@@ -678,7 +678,14 @@ to-report show-ct-event
   report ct-event
 end
 
-  
+to-report show-ct-dgt
+  report ct-dgt
+end
+
+to-report show-ct-cgt
+  report ct-cgt
+end
+
 to-report next-seed
   report (random 4294967296) - 2147483648
 end
