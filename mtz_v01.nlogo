@@ -115,6 +115,7 @@ to step
   if state = "ROOT_TE" [step_ROOT_TE stop]
   if state = "IDLE_TE" [step_IDLE_TE stop]
   if state = "DONE_TE" or state = "ROOT" [step_DONE_TE stop]
+  if state = "IDLE_CT" [step_IDLE_CT stop]
 end
 
 ;; propogate information about zone of interest
@@ -126,7 +127,7 @@ to step_INIZ
   if communicationstrategy = "Flooding" [
     become "IDLE"
     ]
-  if communicationstrategy = "Direction-based" or communicationstrategy = "CDC-similarity" [
+  if communicationstrategy = "Direction-based" or communicationstrategy = "CDC-similarity" or communicationstrategy = "CDC-towards" [
     become "INIT_DB"
     ]
   if communicationstrategy = "Neighbourhood-based" [
@@ -149,7 +150,7 @@ to step_INIT
     if communicationstrategy = "Flooding" [
       become "IDLE"
       ]
-    if communicationstrategy = "Direction-based" or communicationstrategy = "CDC-similarity" [
+    if communicationstrategy = "Direction-based" or communicationstrategy = "CDC-similarity" or communicationstrategy = "CDC-towards" [
       become "INIT_DB"
       ]
     if communicationstrategy = "Neighbourhood-based" [
@@ -280,7 +281,12 @@ to step_WAIT_DB
         set-similar-neighbours
       ]
     ]
-    become "IDLE_DB"
+    ifelse communicationstrategy = "CDC-towards" [
+      become "IDLE_CT"
+      ]
+    [
+      become "IDLE_DB"
+    ]
     ]
 end
 
@@ -327,6 +333,34 @@ end
 ;; if targets is an empty list, the msg will be broadcasted
 to multicast [msg targets]
   broadcast (lput targets msg)
+end
+
+;; redirection based on whether if it is actually moving towards
+to step_IDLE_CT
+  if has-message "AEXT" [
+    let msg received "AEXT"
+    let targets last msg
+    let is-target (member? who targets or empty? targets)
+    let record but-first but-last msg
+    if is-target and (not is-old record) [
+      ask patch-here [set pcolor black]
+      update-local-history record TRUE
+      ifelse moving-towards record-bbox record bounding-box targetzone-boundingbox [
+        multicast fput "AEXT" record []
+        ]
+      [
+        ifelse empty? towards-neighbour [
+          multicast fput "AEXT" record (map [first ?] similar-neighbour)
+          ] [
+          multicast fput "AEXT" record (map [first ?] towards-neighbour)
+          ]
+        ]
+      ]
+    ]
+  let msgs on-sensing-movement TRUE
+  foreach msgs [
+    multicast (fput "AEXT" ?) []
+    ]
 end
 
 ;; direct-neighbour-based method
@@ -526,6 +560,17 @@ to decide-on-history [record]
       log-results testresultline
     ]
   ]
+end
+
+to-report moving-towards [azone bzone zzone]
+  let predir CDC-dir azone bzone
+  let curdir CDC-dir bzone zzone
+  ifelse not empty? (filter [member? ? predir] curdir) [
+    report TRUE
+    ]
+  [
+    report FALSE
+    ]
 end
 
 ;; Move object (based on modified correlated random walk)
@@ -785,7 +830,7 @@ INPUTBOX
 60
 105
 Netsize
-1000
+750
 1
 0
 Number
@@ -1038,8 +1083,8 @@ CHOOSER
 715
 CommunicationStrategy
 CommunicationStrategy
-"Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree"
-1
+"Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree" "CDC-towards"
+3
 
 MONITOR
 215
@@ -1162,7 +1207,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1514,7 +1559,7 @@ initialize</setup>
     </enumeratedValueSet>
     <enumeratedValueSet variable="CommunicationStrategy">
       <value value="&quot;Flooding&quot;"/>
-      <value value="&quot;Hybird&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="move-type">
       <value value="&quot;CRW&quot;"/>
