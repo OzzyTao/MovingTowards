@@ -16,7 +16,7 @@ breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
 globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed
-         interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt]
+         interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt maincomponent]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -46,8 +46,11 @@ to initialize
   if NetworkStructure = "GG" [create-udg create-gg]
   if NetworkStructure = "RNG" [create-udg create-rng]
   
-  ask motes [ become "INIT"]
-  ask one-of motes [ become "INIZ" ]
+  set-largest-component
+    
+  set maincomponent motes with [componentID = maincomponentID]
+  ask maincomponent [ become "INIT"]
+  ask one-of maincomponent [ become "INIZ" ]
   
   ask motes [ 
     set m [] 
@@ -78,8 +81,6 @@ to initialize
   ]
   print "Object, ticks, decentralized, centralized"
   
-  set-largest-component
-  
   set ct-event 0
   set ct-dgt -1
   set ct-cgt -1
@@ -92,7 +93,7 @@ to go
   set ct-event 0
   set ct-dgt -1
   set ct-cgt -1
-  ask motes [step]
+  ask maincomponent [step]
   if remainder ticks CMR = 0 [ 
     move-objects
     mote-labels
@@ -471,17 +472,10 @@ to centralized-cdc-validation [obj-id]
       let previousBBOX record-bbox previous-record
       let predir CDC-dir previousBBOX currentBBOX
       let curdir CDC-dir currentBBOX targetzone-boundingbox
-      ifelse not empty? (filter [member? ? predir] curdir) [
-        set testresultline lput TRUE testresultline
-        set ct-cgt 1
-        ] 
-      [
-        set testresultline lput FALSE testresultline
-        set ct-cgt 0
-        ]
-      ]
+      ifelse not empty? (filter [member? ? predir] curdir) [log-gt TRUE] [log-gt FALSE]
       ]
     ]
+  ]
 end
 
 ;; on sensing entering events, report messages to be spreaded 
@@ -520,11 +514,9 @@ to-report on-sensing-movement [keep-history]
           let predir CDC-dir (item 2 previous) bounding-box
           ifelse not empty? (filter [member? ? zr] predir) [
             set testresultline lput "," (lput TRUE testresultline)
-            set ct-dgt 1
           ]
           [
             set testresultline lput "," (lput FALSE testresultline)
-            set ct-dgt 0
           ]
         ]
       ] 
@@ -535,7 +527,7 @@ to-report on-sensing-movement [keep-history]
       centralized-cdc-validation first msg
       ]
       log-results testresultline
-      set ct-event ct-event + 1
+      count-event
       ]
     ]
   close-inactive-records
@@ -569,6 +561,7 @@ to decide-on-history [record]
       centralized-cdc-validation obj-id
       ]
       log-results testresultline
+      count-event
     ]
   ]
 end
@@ -811,6 +804,17 @@ end
 to count-event
   if componentID = maincomponentID [
     set ct-event ct-event + 1
+    ]
+end
+
+to log-gt [predicate]
+  ifelse predicate [
+    set testresultline lput TRUE testresultline
+    set ct-cgt 1
+    ]
+  [
+    set testresultline lput FALSE testresultline
+    set ct-cgt 0
     ]
 end
 @#$#@#$#@
@@ -1057,7 +1061,7 @@ INPUTBOX
 155
 755
 current-seed
--640111348
+1060777303
 1
 0
 Number
@@ -1070,7 +1074,7 @@ CHOOSER
 move-type
 move-type
 "Simple Linear" "CRW"
-1
+0
 
 SWITCH
 15
@@ -1101,7 +1105,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree" "CDC-towards"
-3
+6
 
 MONITOR
 215
