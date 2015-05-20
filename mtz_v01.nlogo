@@ -450,6 +450,7 @@ to step_DONE_TE
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
+        set ct-event ct-event + 1
         if ground-truth-check [
         update-global-history msg
         ]
@@ -521,7 +522,7 @@ to-report on-sensing-movement [keep-history]
         ]
       ] 
       set msgs lput msg msgs
-      
+      set ct-event ct-event + 1      
       if ground-truth-check [
       update-global-history msg
       centralized-cdc-validation first msg
@@ -1061,7 +1062,7 @@ INPUTBOX
 155
 755
 current-seed
-1060777303
+1310021339
 1
 0
 Number
@@ -1228,7 +1229,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.0.1
+NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1787,6 +1788,303 @@ initialize</setup>
     </enumeratedValueSet>
     <enumeratedValueSet variable="searching-steps">
       <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e12" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "BCST"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TOZZ"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
+      <value value="&quot;Direction-based&quot;"/>
+      <value value="&quot;CDC-similarity&quot;"/>
+      <value value="&quot;Neighbourhood-based&quot;"/>
+      <value value="&quot;Shortest-path-tree&quot;"/>
+      <value value="&quot;CDC-towards&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e13" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "BCST"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TOZZ"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-1338276584"/>
+      <value value="1310021339"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
+      <value value="&quot;Direction-based&quot;"/>
+      <value value="&quot;CDC-similarity&quot;"/>
+      <value value="&quot;Neighbourhood-based&quot;"/>
+      <value value="&quot;Shortest-path-tree&quot;"/>
+      <value value="&quot;CDC-towards&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e14" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "BCST"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TOZZ"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+      <value value="-1338276584"/>
+      <value value="1310021339"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e15" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "BCST"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TOZZ"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+      <value value="-1338276584"/>
+      <value value="1310021339"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Shortest-path-tree&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="ground-truth-check">
       <value value="true"/>
