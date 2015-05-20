@@ -56,6 +56,7 @@ to initialize
     set neighbourhood []
     set towards-neighbour []
     set similar-neighbour []
+    set node-degree count comlink-neighbors
     ]
   
   ask objects [
@@ -76,6 +77,8 @@ to initialize
   file-print "Object, ticks, decentralized, centralized"
   ]
   print "Object, ticks, decentralized, centralized"
+  
+  set-largest-component
   
   set ct-event 0
   set ct-dgt -1
@@ -804,6 +807,12 @@ to adjust-mote-grid [bbox]
   ask item 6 motegridanchor-list [setxy rightcor max-pycor]
   ask item 7 motegridanchor-list [setxy leftcor max-pycor]
 end
+
+to count-event
+  if componentID = maincomponentID [
+    set ct-event ct-event + 1
+    ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -838,7 +847,7 @@ INPUTBOX
 60
 105
 Netsize
-750
+200
 1
 0
 Number
@@ -1082,7 +1091,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-0
+1
 
 CHOOSER
 175

@@ -8,8 +8,8 @@
 ;; * Received messages in msghear (messages heard, but not processed), same structure. 
 ;; * Received messages in msgrecv (messages received and processed), same structure. 
 ;; m1, m2, ... is message name; n1, n2, ... is number of messages; l1, l2, ... is message length
-turtles-own [messages state parent children msgsent msgrecv msghear ctmsgsent ctmsgrecv ctmsghear]
-
+turtles-own [messages state parent children msgsent msgrecv msghear ctmsgsent ctmsgrecv ctmsghear componentID node-degree]
+globals [maincomponentID num-turtles-maincomponent]
 ;; Each patch can store the local variable region.
 ;; Each patch can store the local variable height which will be the sensed value of any mote in the patch
 patches-own [region height] 
@@ -45,6 +45,7 @@ to setup
     set ctmsgsent [] ;; (Same for messages per tick)
     set ctmsgrecv []
     set ctmsghear [] 
+    set componentID 0
   ]
   ask objects [
     set size (world-width / 21)
@@ -467,6 +468,45 @@ to-report connected-component [mymotes]
   report true
 end
 
+;; if there are turtles haven't been assigned to a connected component, locate a new component and report the population of that component
+to-report find-new-connected-component [mymotes newid]
+  let unassigned mymotes with [componentID = 0]
+  if count unassigned = 0 [report 0]
+  let processing []
+  let visited []
+  set processing fput [who] of one-of unassigned visited
+  while [not empty? processing] [
+    let v item 0 processing
+    set processing remove-item 0 processing
+    set visited fput v visited
+    ask mote v [
+      set componentID newid
+      ask comlink-neighbors [
+        if not member? who visited and member? self unassigned [
+          set processing fput who processing
+          ]
+        ]
+      set processing remove-duplicates processing
+      ]
+    ]
+  report length visited
+end
+
+to set-largest-component
+  let nextID 1
+  let tempnum find-new-connected-component motes nextID
+  set maincomponentID nextID
+  set num-turtles-maincomponent tempnum
+  while [tempnum > 0] [
+    set nextID nextID + 1
+    set tempnum find-new-connected-component motes nextID
+    if tempnum > num-turtles-maincomponent [
+      set num-turtles-maincomponent tempnum
+      set maincomponentID nextID
+      ]
+    ]
+end
+
 to-report twoconnected [mymotes]
   let res true
   ask mymotes [
@@ -712,4 +752,14 @@ to-report max-path-length
       ]
     ]
   report max-tree-depth
+end
+
+to-report true-population-motes
+  report num-turtles-maincomponent
+end
+
+to-report avg-node-degree
+  let totaldegree 0
+  ask motes [set totaldegree totaldegree + node-degree]
+  report totaldegree / (count motes)
 end
