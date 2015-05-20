@@ -446,6 +446,7 @@ to step_DONE_TE
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
+        set ct-event ct-event + 1
         if ground-truth-check [
         update-global-history msg
         ]
@@ -526,13 +527,12 @@ to-report on-sensing-movement [keep-history]
         ]
       ] 
       set msgs lput msg msgs
-      
+      set ct-event ct-event + 1      
       if ground-truth-check [
       update-global-history msg
       centralized-cdc-validation first msg
       ]
       log-results testresultline
-      set ct-event ct-event + 1
       ]
     ]
   close-inactive-records
