@@ -427,6 +427,7 @@ to step_DONE_TE
     let msg received "AEXT"
     ifelse tree-parent = -1 [
       let record but-first msg
+      if ground-truth-check [update-global-history record]
       decide-on-history record
       ]
     [
@@ -454,9 +455,6 @@ to step_DONE_TE
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
-        if ground-truth-check [
-        update-global-history msg
-        ]
         send (fput "AEXT" msg) mote tree-parent
         ]
       ]
@@ -854,7 +852,7 @@ INPUTBOX
 60
 105
 Netsize
-500
+1000
 1
 0
 Number
@@ -1098,7 +1096,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-1
+0
 
 CHOOSER
 175
@@ -1231,7 +1229,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
