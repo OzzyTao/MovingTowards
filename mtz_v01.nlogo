@@ -454,7 +454,6 @@ to step_DONE_TE
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
-        count-event
         if ground-truth-check [
         update-global-history msg
         ]
@@ -855,7 +854,7 @@ INPUTBOX
 60
 105
 Netsize
-200
+500
 1
 0
 Number
@@ -1065,7 +1064,7 @@ INPUTBOX
 155
 755
 current-seed
-1310021339
+-640111348
 1
 0
 Number
@@ -1078,7 +1077,7 @@ CHOOSER
 move-type
 move-type
 "Simple Linear" "CRW"
-0
+1
 
 SWITCH
 15
@@ -1109,7 +1108,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree" "CDC-towards"
-6
+5
 
 MONITOR
 215
@@ -1232,7 +1231,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
