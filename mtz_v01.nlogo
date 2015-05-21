@@ -16,7 +16,7 @@ breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
 globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed
-         interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt maincomponent]
+         interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt maincomponent predicate-list groundtruth-list]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -93,6 +93,8 @@ to go
   set ct-event 0
   set ct-dgt -1
   set ct-cgt -1
+  set predicate-list []
+  set groundtruth-list []
   ask maincomponent [step]
   if remainder ticks CMR = 0 [ 
     move-objects
@@ -450,7 +452,7 @@ to step_DONE_TE
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
-        set ct-event ct-event + 1
+        count-event
         if ground-truth-check [
         update-global-history msg
         ]
@@ -513,24 +515,18 @@ to-report on-sensing-movement [keep-history]
         let previous proper-previous-record its-history ticks
         if not empty? previous [
           let predir CDC-dir (item 2 previous) bounding-box
-          ifelse not empty? (filter [member? ? zr] predir) [
-            set testresultline lput "," (lput TRUE testresultline)
-          ]
-          [
-            set testresultline lput "," (lput FALSE testresultline)
-          ]
+          ifelse not empty? (filter [member? ? zr] predir) [log-predicate TRUE] [log-predicate FALSE]
         ]
       ] 
-      set msgs lput msg msgs
-      set ct-event ct-event + 1      
+      set msgs lput msg msgs   
       if ground-truth-check [
-      update-global-history msg
-      centralized-cdc-validation first msg
+        update-global-history msg
+        centralized-cdc-validation first msg
       ]
       log-results testresultline
       count-event
-      ]
     ]
+  ]
   close-inactive-records
   report msgs
 end
@@ -547,16 +543,7 @@ to decide-on-history [record]
       let previous-record proper-previous-record its-history record-timestamp (last its-history)
       if not empty? previous-record [
         let previousBBOX record-bbox previous-record
-        let predir CDC-dir previousBBOX currentBBOX
-        let curdir CDC-dir currentBBOX targetzone-boundingbox
-        ifelse not empty? (filter [member? ? predir] curdir) [
-          set testresultline lput TRUE testresultline
-          set testresultline lput "," testresultline
-        ] 
-        [
-          set testresultline lput FALSE testresultline
-          set testresultline lput "," testresultline
-        ]
+        ifelse moving-towards previousBBOX currentBBOX targetzone-boundingbox [log-predicate TRUE] [log-predicate FALSE]
       ]
       if ground-truth-check [
       centralized-cdc-validation obj-id
@@ -809,13 +796,27 @@ to count-event
 end
 
 to log-gt [predicate]
+  if ct-cgt < 0 [set ct-cgt 0]
   ifelse predicate [
     set testresultline lput TRUE testresultline
-    set ct-cgt 1
+    set ct-cgt ct-cgt + 1
+    set groundtruth-list lput 1 groundtruth-list
     ]
   [
     set testresultline lput FALSE testresultline
-    set ct-cgt 0
+    set groundtruth-list lput 0 groundtruth-list
+    ]
+end
+
+to log-predicate [predicate]
+  if ct-dgt < 0 [set ct-dgt 0]
+  ifelse predicate [
+    set testresultline lput "," (lput TRUE testresultline)
+    set ct-dgt ct-dgt + 1
+    set predicate-list lput 1 predicate-list
+    ] [
+    set testresultline lput "," (lput FALSE testresultline)
+    set predicate-list lput 0 predicate-list
     ]
 end
 @#$#@#$#@
@@ -1229,7 +1230,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

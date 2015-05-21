@@ -731,18 +731,11 @@ to-report next-seed
 end
 
 to-report show-moving-towards
-  if length testresultline > 6 [
-    ifelse item 4 testresultline [report 1] [report 0]
-    ]
-  report -1
+  report predicate-list
 end
 
 to-report show-true-moving-towards
-  if not ground-truth-check [report -1]
-  if length testresultline > 6 [
-    ifelse last testresultline [report 1] [report 0]
-    ]
-  report -1
+  report groundtruth-list
 end
 
 to-report max-path-length
