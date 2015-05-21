@@ -84,6 +84,8 @@ to initialize
   set ct-event 0
   set ct-dgt -1
   set ct-cgt -1
+  set predicate-list []
+  set groundtruth-list []
   reset-ticks
 end
 
