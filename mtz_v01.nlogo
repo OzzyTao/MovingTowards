@@ -16,7 +16,7 @@ breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
 globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed
-         interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt maincomponent predicate-list groundtruth-list]
+         interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt maincomponent predicate-list groundtruth-list diameter]
 ;; System setup and initialization
 to initialize
   ;; set target region
@@ -49,6 +49,7 @@ to initialize
   set-largest-component
     
   set maincomponent motes with [componentID = maincomponentID]
+  if calc-diameter [set diameter network-diameter maincomponent]
   ask maincomponent [ become "INIT"]
   ask one-of maincomponent [ become "INIZ" ]
   
@@ -573,9 +574,13 @@ to move-objects
   ]
   if move-type = "CRW" [
     ask objects [
-      random-seed movement-seed
-      rt random-normal 0 15 ;; Change the heading based on Gaussian distribution with standard deviation of 15 degrees
-      set movement-seed next-seed
+      ifelse pxcor < max-pxcor and pxcor > min-pxcor and pycor < max-pycor and pycor > min-pycor [
+        random-seed movement-seed
+        rt random-normal 0 15 ;; Change the heading based on Gaussian distribution with standard deviation of 15 degrees
+        set movement-seed next-seed
+      ] [
+        facexy 0 0
+      ]
       fd 1
     ]
   ]
@@ -1054,7 +1059,7 @@ CHOOSER
 Seed
 Seed
 "none" "random" "manual"
-2
+1
 
 INPUTBOX
 15
@@ -1062,7 +1067,7 @@ INPUTBOX
 155
 755
 current-seed
--640111348
+210840032
 1
 0
 Number
@@ -1106,7 +1111,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree" "CDC-towards"
-5
+6
 
 MONITOR
 215
@@ -1160,6 +1165,17 @@ SWITCH
 ground-truth-check
 ground-truth-check
 0
+1
+-1000
+
+SWITCH
+15
+815
+157
+848
+calc-diameter
+calc-diameter
+1
 1
 -1000
 
@@ -1229,7 +1245,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

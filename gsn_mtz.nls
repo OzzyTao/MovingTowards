@@ -444,6 +444,39 @@ end
 ;; Functions related to network topology                                               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; calculate diameter of a graph by bfs for each node
+to-report network-diameter [mymotes]
+  let max-length 0
+  ask mymotes [
+    let len maximum-shortest-path mymotes
+    if len > max-length [
+      set max-length len
+      ]
+    ]
+  report max-length
+end
+
+to-report maximum-shortest-path [mymotes]
+  let shortest-length 0
+  let processing []
+  set processing lput (lput 0 (lput who [])) processing
+  let visited []
+  while [not empty? processing] [
+    let v first processing
+    set processing but-first processing
+    set visited fput v visited
+    ask mote (first v) [
+      ask comlink-neighbors [
+        if not member? who map [first ?] visited and not member? who map [first ?] processing and member? self mymotes [
+          set processing lput (list who (last v + 1)) processing
+          set shortest-length last v + 1
+          ]
+        ]
+      ]
+    ]
+  report shortest-length
+end
+
 ;; Reports true if the network is connected. Uses the breadth-first search
 to-report connected
   report connected-component motes
