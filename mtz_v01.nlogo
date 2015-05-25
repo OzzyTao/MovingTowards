@@ -1162,7 +1162,7 @@ SLIDER
 15
 865
 245
-899
+898
 vision
 vision
 0.0
@@ -1177,7 +1177,7 @@ SLIDER
 15
 900
 246
-934
+933
 minimum-separation
 minimum-separation
 0.0
@@ -1254,6 +1254,9 @@ Monitoring movement towards a zone of interest using qualitative directional inf
 ## CREDITS
 
 Builds on and extends code from Duckham, 2013
+
+Re-uses and modifies code from "Boids" / NetLogo "Flocking" model:
+Wilensky, U. (1998). NetLogo Flocking model. http://ccl.northwestern.edu/netlogo/models/Flocking. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 Copyright 2011, 2012 Matt Duckham
 
