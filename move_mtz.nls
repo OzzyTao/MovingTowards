@@ -1,0 +1,114 @@
+;; Move object (based on input selection)
+to move-objects
+  if move-type = "Simple Linear" [
+    ask objects [
+      fd 1
+    ]
+  ]
+  if move-type = "CRW" [
+    ask objects [
+      ifelse pxcor < max-pxcor and pxcor > min-pxcor and pycor < max-pycor and pycor > min-pycor [
+        random-seed movement-seed
+        rt random-normal 0 15 ;; Change the heading based on Gaussian distribution with standard deviation of 15 degrees
+        set movement-seed next-seed
+      ] [
+        facexy 0 0
+      ]
+      fd 1
+    ]
+  ]
+  if move-type = "Boids/Flocking" [
+    ask objects [flock]
+    ask objects [ 
+      if not (pxcor < max-pxcor and pxcor > min-pxcor and pycor < max-pycor and pycor > min-pycor) [
+        facexy 0 0
+      ]
+      fd 1
+    ]
+  ]   
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Following procedures re-used from NetLogo "Flocking" model,
+;; Wilensky, U. (1998). NetLogo Flocking model. http://ccl.northwestern.edu/netlogo/models/Flocking.
+;; Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+to flock  ;; turtle procedure
+  find-flockmates
+  if any? flockmates
+    [ find-nearest-neighbor
+      ifelse distance nearest-neighbor < minimum-separation
+        [ separate ]
+        [ align
+          cohere ] ]
+end
+
+to find-flockmates  ;; turtle procedure
+  set flockmates other turtles in-radius vision
+end
+
+to find-nearest-neighbor ;; turtle procedure
+  set nearest-neighbor min-one-of flockmates [distance myself]
+end
+
+;;; SEPARATE
+
+to separate  ;; turtle procedure
+  turn-away ([heading] of nearest-neighbor) max-separate-turn
+end
+
+;;; ALIGN
+
+to align  ;; turtle procedure
+  turn-towards average-flockmate-heading max-align-turn
+end
+
+to-report average-flockmate-heading  ;; turtle procedure
+  ;; We can't just average the heading variables here.
+  ;; For example, the average of 1 and 359 should be 0,
+  ;; not 180.  So we have to use trigonometry.
+  let x-component sum [dx] of flockmates
+  let y-component sum [dy] of flockmates
+  ifelse x-component = 0 and y-component = 0
+    [ report heading ]
+    [ report atan x-component y-component ]
+end
+
+;;; COHERE
+
+to cohere  ;; turtle procedure
+  turn-towards average-heading-towards-flockmates max-cohere-turn
+end
+
+to-report average-heading-towards-flockmates  ;; turtle procedure
+  ;; "towards myself" gives us the heading from the other turtle
+  ;; to me, but we want the heading from me to the other turtle,
+  ;; so we add 180
+  let x-component mean [sin (towards myself + 180)] of flockmates
+  let y-component mean [cos (towards myself + 180)] of flockmates
+  ifelse x-component = 0 and y-component = 0
+    [ report heading ]
+    [ report atan x-component y-component ]
+end
+
+;;; HELPER PROCEDURES
+
+to turn-towards [new-heading max-turn]  ;; turtle procedure
+  turn-at-most (subtract-headings new-heading heading) max-turn
+end
+
+to turn-away [new-heading max-turn]  ;; turtle procedure
+  turn-at-most (subtract-headings heading new-heading) max-turn
+end
+
+;; turn right by "turn" degrees (or left if "turn" is negative),
+;; but never turn more than "max-turn" degrees
+to turn-at-most [turn max-turn]  ;; turtle procedure
+  ifelse abs turn > max-turn
+    [ ifelse turn > 0
+        [ rt max-turn ]
+        [ lt max-turn ] ]
+    [ rt turn ]
+end
+;; (End NetLogo Flocking model pocedures)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
