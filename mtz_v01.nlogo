@@ -1,11 +1,11 @@
-__includes["./gsn_mtz.nls" "./env_mtz.nls" "./btp_mtz.nls" "./geometry_mtz.nls" "./tabular_mtz.nls"]
+__includes["./gsn_mtz.nls" "./env_mtz.nls" "./btp_mtz.nls" "./geometry_mtz.nls" "./tabular_mtz.nls" "./move_mtz.nls"]
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
 motes-own [m zr history neighbourhood towards-neighbour similar-neighbour tree-parent tree-depth]
 ;; history is a list of tables that each one keep records about one specific object
 ;; Define a new breed of turtle called motes (i.e. moving objects)
 breed [objects object]
-objects-own [predis]
+objects-own [predis flockmates nearest-neighbor]
 ;; anchor vertices for target zone
 breed [tzonevertices tzonevertex]
 
@@ -565,27 +565,6 @@ to-report moving-towards [azone bzone zzone]
     ]
 end
 
-;; Move object (based on modified correlated random walk)
-to move-objects
-  if move-type = "Simple Linear" [
-    ask objects [
-      fd 1
-    ]
-  ]
-  if move-type = "CRW" [
-    ask objects [
-      ifelse pxcor < max-pxcor and pxcor > min-pxcor and pycor < max-pycor and pycor > min-pycor [
-        random-seed movement-seed
-        rt random-normal 0 15 ;; Change the heading based on Gaussian distribution with standard deviation of 15 degrees
-        set movement-seed next-seed
-      ] [
-        facexy 0 0
-      ]
-      fd 1
-    ]
-  ]
-end
-
 ;; Assign labels to motes based on the MoteLable dropdown list
 to mote-labels
   ask motes [
@@ -857,7 +836,7 @@ INPUTBOX
 60
 105
 Netsize
-1000
+20
 1
 0
 Number
@@ -952,7 +931,7 @@ INPUTBOX
 110
 105
 ObjNo
-1
+10
 1
 0
 Number
@@ -975,7 +954,7 @@ SWITCH
 213
 show-tails
 show-tails
-0
+1
 1
 -1000
 
@@ -1005,7 +984,7 @@ OUTPUT
 425
 305
 605
-21
+30
 
 MONITOR
 15
@@ -1067,7 +1046,7 @@ INPUTBOX
 155
 755
 current-seed
-210840032
+1448017846
 1
 0
 Number
@@ -1075,12 +1054,12 @@ Number
 CHOOSER
 15
 765
-155
+160
 810
 move-type
 move-type
-"Simple Linear" "CRW"
-1
+"Simple Linear" "CRW" "Boids/Flocking"
+2
 
 SWITCH
 15
@@ -1179,6 +1158,81 @@ calc-diameter
 1
 -1000
 
+SLIDER
+15
+865
+245
+899
+vision
+vision
+0.0
+10.0
+3
+0.5
+1
+patches
+HORIZONTAL
+
+SLIDER
+15
+900
+246
+934
+minimum-separation
+minimum-separation
+0.0
+5.0
+1
+0.25
+1
+patches
+HORIZONTAL
+
+SLIDER
+15
+935
+245
+968
+max-align-turn
+max-align-turn
+0.0
+20.0
+5
+0.25
+1
+degrees
+HORIZONTAL
+
+SLIDER
+15
+970
+245
+1003
+max-cohere-turn
+max-cohere-turn
+0.0
+20.0
+3
+0.25
+1
+degrees
+HORIZONTAL
+
+SLIDER
+15
+1005
+245
+1038
+max-separate-turn
+max-separate-turn
+0.0
+20.0
+1.5
+0.25
+1
+degrees
+HORIZONTAL
+
 @#$#@#$#@
 ## PROTOCOL
 
@@ -1245,7 +1299,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.0.1
+NetLogo 5.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
