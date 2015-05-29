@@ -758,9 +758,9 @@ ticks
 
 INPUTBOX
 10
-45
+375
 60
-105
+435
 Netsize
 500
 1
@@ -803,9 +803,9 @@ NIL
 
 SWITCH
 10
-110
-210
-143
+585
+130
+618
 trackmsg
 trackmsg
 0
@@ -813,10 +813,10 @@ trackmsg
 -1000
 
 INPUTBOX
-110
-45
-160
-105
+10
+170
+60
+230
 c
 20
 1
@@ -824,10 +824,10 @@ c
 Number
 
 INPUTBOX
-160
-45
-210
-105
+60
+170
+110
+230
 s
 5
 1
@@ -852,10 +852,10 @@ NIL
 1
 
 INPUTBOX
+10
+275
 60
-45
-110
-105
+335
 ObjNo
 1
 1
@@ -864,9 +864,9 @@ Number
 
 SWITCH
 10
-145
-210
-178
+665
+125
+698
 show-links
 show-links
 1
@@ -875,9 +875,9 @@ show-links
 
 SWITCH
 10
-180
-210
-213
+700
+125
+733
 show-tails
 show-tails
 1
@@ -886,9 +886,9 @@ show-tails
 
 INPUTBOX
 130
-220
+700
 210
-280
+760
 tail-width
 3
 1
@@ -897,26 +897,26 @@ Number
 
 CHOOSER
 10
-220
+740
 110
-265
+785
 MoteLabel
 MoteLabel
 "none" "mote id" "m" "zr"
 0
 
 OUTPUT
-15
-425
-305
-605
+1205
+645
+1495
+825
 30
 
 MONITOR
-15
-300
-97
-345
+1205
+530
+1287
+575
 sent length
 sent-length-msg-totals
 17
@@ -924,10 +924,10 @@ sent-length-msg-totals
 11
 
 MONITOR
-110
-300
-202
-345
+1300
+530
+1392
+575
 sent number
 sent-number-msg-totals
 17
@@ -935,10 +935,10 @@ sent-number-msg-totals
 11
 
 MONITOR
-15
-355
-97
-400
+1205
+585
+1287
+630
 recv length
 recv-length-msg-totals
 17
@@ -946,10 +946,10 @@ recv-length-msg-totals
 11
 
 MONITOR
-110
-355
-202
-400
+1300
+585
+1392
+630
 recv number
 recv-number-msg-totals
 17
@@ -957,20 +957,20 @@ recv-number-msg-totals
 11
 
 CHOOSER
-15
-650
 155
-695
+515
+295
+560
 Seed
 Seed
 "none" "random" "manual"
 2
 
 INPUTBOX
-15
-695
 155
-755
+560
+295
+620
 current-seed
 -540677238
 1
@@ -978,20 +978,20 @@ current-seed
 Number
 
 CHOOSER
-15
-765
-160
-810
+65
+275
+210
+320
 move-type
 move-type
 "Simple Linear" "CRW" "Boids/Flocking"
 1
 
 SWITCH
-15
-610
-157
-643
+10
+515
+152
+548
 output-to-file
 output-to-file
 1
@@ -999,30 +999,30 @@ output-to-file
 -1000
 
 CHOOSER
-175
-615
-313
-660
+60
+375
+198
+420
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
 1
 
 CHOOSER
-175
-670
-347
-715
+10
+75
+155
+120
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
 6
 
 MONITOR
-215
-300
-312
-345
+1405
+530
+1502
+575
 Interior nodes
 interior-num
 17
@@ -1030,10 +1030,10 @@ interior-num
 11
 
 MONITOR
-215
-360
-327
-405
+1405
+590
+1517
+635
 Boundary nodes
 boundary-num
 17
@@ -1041,10 +1041,10 @@ boundary-num
 11
 
 INPUTBOX
-170
-730
-322
-790
+160
+75
+312
+135
 searching-steps
 0
 1
@@ -1052,10 +1052,10 @@ searching-steps
 Number
 
 INPUTBOX
-210
-45
-260
-105
+110
+170
+160
+230
 CMR
 100
 1
@@ -1063,10 +1063,10 @@ CMR
 Number
 
 SWITCH
-170
-795
-352
-828
+10
+480
+192
+513
 ground-truth-check
 ground-truth-check
 0
@@ -1074,10 +1074,10 @@ ground-truth-check
 -1000
 
 SWITCH
-15
-815
-157
-848
+10
+550
+152
+583
 calc-diameter
 calc-diameter
 1
@@ -1085,10 +1085,10 @@ calc-diameter
 -1000
 
 SLIDER
-15
-865
-245
-898
+1205
+65
+1435
+98
 vision
 vision
 0.0
@@ -1100,10 +1100,10 @@ patches
 HORIZONTAL
 
 SLIDER
-15
-900
-246
-933
+1205
+100
+1436
+133
 minimum-separation
 minimum-separation
 0.0
@@ -1115,10 +1115,10 @@ patches
 HORIZONTAL
 
 SLIDER
-15
-935
-245
-968
+1205
+135
+1435
+168
 max-align-turn
 max-align-turn
 0.0
@@ -1130,10 +1130,10 @@ degrees
 HORIZONTAL
 
 SLIDER
-15
-970
-245
-1003
+1205
+170
+1435
+203
 max-cohere-turn
 max-cohere-turn
 0.0
@@ -1145,10 +1145,10 @@ degrees
 HORIZONTAL
 
 SLIDER
-15
-1005
-245
-1038
+1205
+205
+1435
+238
 max-separate-turn
 max-separate-turn
 0.0
@@ -1160,10 +1160,10 @@ degrees
 HORIZONTAL
 
 SLIDER
-350
-880
-542
-913
+1205
+250
+1397
+283
 min-group-pop
 min-group-pop
 1
@@ -1175,10 +1175,10 @@ objects
 HORIZONTAL
 
 SLIDER
-360
-940
-532
-973
+1205
+285
+1377
+318
 group-radius
 group-radius
 0
@@ -1190,10 +1190,10 @@ hops
 HORIZONTAL
 
 INPUTBOX
-895
-850
-1130
-910
+1205
+375
+1375
+435
 load-balance-data
 NIL
 1
@@ -1201,10 +1201,10 @@ NIL
 String
 
 BUTTON
-1035
-920
-1117
-953
+1380
+390
+1462
+423
 OUTPUT
 output-load-balance
 NIL
@@ -1218,15 +1218,95 @@ NIL
 0
 
 SWITCH
-220
-115
-342
-148
+130
+665
+252
+698
 visual-aids
 visual-aids
 0
 1
 -1000
+
+TEXTBOX
+1210
+25
+1360
+43
+Experimental Functions
+13
+15.0
+1
+
+TEXTBOX
+1210
+40
+1360
+58
+Group Movements
+13
+0.0
+1
+
+TEXTBOX
+10
+460
+160
+478
+Experiment Settings
+13
+0.0
+1
+
+TEXTBOX
+10
+150
+160
+168
+Sensor Settings
+13
+0.0
+1
+
+TEXTBOX
+10
+255
+160
+273
+Moving Object Settings
+13
+0.0
+1
+
+TEXTBOX
+15
+645
+165
+663
+Visual Effects
+13
+0.0
+1
+
+TEXTBOX
+10
+355
+160
+373
+Network Settings
+13
+0.0
+1
+
+TEXTBOX
+15
+55
+165
+73
+Algorithm Settings
+13
+0.0
+1
 
 @#$#@#$#@
 ## PROTOCOL
