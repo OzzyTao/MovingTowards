@@ -1,0 +1,111 @@
+;; moving towards as a group (fixed members)
+;; global variables: min-group-pop, group-radius
+;; msgs: GPU (group position update), AEXT (object entering event)
+
+to step_fixed_group_IDLE
+  if has-message "AEXT" [
+    let msg received "AEXT"
+    let steps last msg
+    let record but-last (but-first msg)
+    if not is-old record [
+      update-local-history record TRUE
+      if steps > 0 [broadcast lput (steps - 1) (fput "AEXT" record)]
+      ]
+    ]
+  
+  if has-message "GPU" [
+    let msg received "GPU"
+    let steps last msg
+    let record but-last (but-first msg)
+    if not is-old-group-msg group-position-history record [
+      update-group-history group-position-history record
+      if steps > 0 [broadcast lput (steps - 1) (fput "GPU" record)]
+      ]
+    ]
+  
+  let msgs on-sensing-movement TRUE
+  foreach msgs [
+    set pedding-msgs lput ? pedding-msgs
+    ]
+  if group-radius > 0 [
+    foreach msgs [
+      broadcast lput group-radius (fput "AEXT" ?)
+      ]
+    ]
+  
+  if length pedding-msgs > 0 and remainder ticks CMR = 20 [
+    let recordlist map [last ?] history
+    if length recordlist >= min-group-pop [
+      let groupid sort (map [record-objID ?] recordlist)
+      let groupbbox union-boundingbox-group map [record-bbox ?] recordlist
+      let time max map [record-timestamp ?] recordlist
+      let record (list groupid groupbbox time)
+      let loc locate-groupid group-position-history groupid
+      if loc >= 0 [
+        let prebbox item 1 (item loc group-position-history)
+        ifelse moving-towards prebbox groupbbox targetzone-boundingbox [
+          print True
+          ]
+        [
+          print False
+          ]
+        ]
+      update-group-history group-position-history record
+      broadcast lput searching-steps (fput "GPU" record) 
+      ]
+    set pedding-msgs []
+    ]
+end
+
+to-report locate-groupid [group-history idlist]
+  let index 0
+  let len length group-history
+  while [index < len] [
+    let this item index group-history
+    if list-equal? (first this) idlist [report index]
+    set index index + 1
+    ]
+  report -1
+end
+
+to-report is-old-group-msg [group-history record]
+  let index 0
+  let len length group-history
+  while [index < len] [
+    let this item index group-history
+    if list-equal? (first this) (first record) and last this = last record [
+      report True
+      ]
+    set index index + 1
+    ]
+  report False
+end
+
+to-report list-equal? [lista listb]
+  if length lista != length listb [
+    report False
+    ]
+  let len length lista
+  let index 0 
+  while [index < len] [
+    if item index lista != item index listb [
+      report False
+      ]
+    set index index + 1
+    ]
+  report True
+end
+
+to update-group-history [localhistory record] 
+  let replaced False
+  let index 0
+  let len length localhistory
+  while [index < len and not replaced] [
+    let this item index localhistory
+    if list-equal? (first this) (first record) and last this = last record [
+      set localhistory replace-item index localhistory record
+      set replaced True
+      ]
+    ]
+  if not replaced [set localhistory lput record localhistory]
+end

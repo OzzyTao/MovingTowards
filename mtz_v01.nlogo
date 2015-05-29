@@ -1,7 +1,7 @@
-__includes["./gsn_mtz.nls" "./env_mtz.nls" "./btp_mtz.nls" "./geometry_mtz.nls" "./tabular_mtz.nls" "./move_mtz.nls"]
+__includes["./gsn_mtz.nls" "./env_mtz.nls" "./btp_mtz.nls" "./geometry_mtz.nls" "./tabular_mtz.nls" "./move_mtz.nls" "./group_mtz.nls" "./mtz_apperance.nls"]
 ;; Define a new breed of turtle called motes (i.e. the (static) sensor nodes)
 breed [motes mote]
-motes-own [m zr history neighbourhood towards-neighbour similar-neighbour tree-parent tree-depth]
+motes-own [m zr history neighbourhood towards-neighbour similar-neighbour tree-parent tree-depth pedding-msgs group-position-history num-msgsent closest-neighbour root]
 ;; history is a list of tables that each one keep records about one specific object
 ;; Define a new breed of turtle called motes (i.e. moving objects)
 breed [objects object]
@@ -19,22 +19,7 @@ globals [targetzone-boundingbox motegridanchor-list global-history filename test
          interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt maincomponent predicate-list groundtruth-list diameter]
 ;; System setup and initialization
 to initialize
-  ;; set target region
-  let anchornum 5
-  ;; set a size of square in which the z-zone can be located
-  let boxsize world-width / 7
-  let box-top random-box-top boxsize
-  let box-right random-box-right boxsize
-  create-ordered-tzonevertices anchornum [
-    let x-offset random boxsize
-    let y-offset random boxsize
-    setxy (box-right - x-offset) (box-top - y-offset) 
-    set size 2
-    set color red
-    ] 
-  ask patches with [in-convex-hull] [
-    set pcolor red
-    ]
+  setup-zzone
   ;; store the info of z-zone in a global variable
   set-target-bounding-box
   
@@ -54,6 +39,8 @@ to initialize
   ask one-of maincomponent [ become "INIZ" ]
   
   ask motes [ 
+    set num-msgsent 0
+    set pedding-msgs []
     set m [] 
     set history []
     set zr []
@@ -63,25 +50,16 @@ to initialize
     set node-degree count comlink-neighbors
     ]
   
-  ask objects [
-    set predis 0
-    ]
+  setup-objects
+  setup-output
   
+  ;; setup global variables
   set testresultline []
   set global-history []
   set movement-seed current-seed
   set interior-num 0
   set boundary-num 0
-  
-  set filename "../mtz-tests/flooding-cdc.csv"
-  file-close-all
-  if output-to-file [
-  if file-exists? filename [file-delete filename]
-  file-open filename
-  file-print "Object, ticks, decentralized, centralized"
-  ]
-  print "Object, ticks, decentralized, centralized"
-  
+    
   set ct-event 0
   set ct-dgt -1
   set ct-cgt -1
@@ -100,6 +78,7 @@ to go
   set groundtruth-list []
   ask maincomponent [step]
   if remainder ticks CMR = 0 [ 
+    if visual-aids [ask motes [ask patch-here [set pcolor white]]]
     move-objects
     mote-labels
     object-tails
@@ -116,39 +95,21 @@ end
 to step
   if state = "INIZ" [step_INIZ stop]
   if state = "INIT" [step_INIT stop]
-  if state = "IDLE" [step_IDLE stop]
-  if state = "XPNB" [step_XPNB stop]
-  if state = "WTNB" [step_WTNB stop]
-  if state = "INER" [step_INER stop]
-  if state = "BNDY" [step_BNDY stop]
-  if state = "INIT_DB" [step_INIT_DB stop]
-  if state = "WAIT_DB" [step_WAIT_DB stop]
-  if state = "IDLE_DB" [step_IDLE_DB stop]
-  if state = "IDLE_NB" [step_IDLE_NB stop]
-  if state = "ROOT_TE" [step_ROOT_TE stop]
-  if state = "IDLE_TE" [step_IDLE_TE stop]
-  if state = "DONE_TE" or state = "ROOT" [step_DONE_TE stop]
-  if state = "IDLE_CT" [step_IDLE_CT stop]
+  ;;if state = "IDLE_GROUP" [step_fixed_group_IDLE stop]
+  
+  if communicationstrategy = "Hybrid" [protocal_step_hybrid]
+  if communicationstrategy = "Flooding" [protocal_step_flooding]
+  if communicationstrategy = "Direction-based" [protocal_step_direction_based]
+  if communicationstrategy = "CDC-similarity" [protocal_step_CDC_similarity]
+  if communicationstrategy = "CDC-towards" [protocal_step_CDC_towards]
+  if communicationstrategy = "GPSR" [protocal_step_GPSR]
+  if communicationstrategy = "Shortest-path-tree" [protocal_step_tree]
 end
 
 ;; propogate information about zone of interest
 to step_INIZ
   broadcast (list "ZBOX" targetzone-boundingbox)
-  if communicationstrategy = "Hybrid" [
-    become "XPNB"
-  ]
-  if communicationstrategy = "Flooding" [
-    become "IDLE"
-    ]
-  if communicationstrategy = "Direction-based" or communicationstrategy = "CDC-similarity" or communicationstrategy = "CDC-towards" [
-    become "INIT_DB"
-    ]
-  if communicationstrategy = "Neighbourhood-based" [
-    become "IDLE_NB"
-    ]
-  if communicationstrategy = "Shortest-path-tree" [
-    become "ROOT_TE"
-    ]
+  finish_zbox_initialization TRUE
 end
 
 to step_INIT
@@ -157,240 +118,226 @@ to step_INIT
     let zbox item 1 msg
     set zr CDC-dir bounding-box zbox
     broadcast (list "ZBOX" zbox)
-    if communicationstrategy = "Hybrid" [
-      become "XPNB"
-      ]
-    if communicationstrategy = "Flooding" [
-      become "IDLE"
-      ]
-    if communicationstrategy = "Direction-based" or communicationstrategy = "CDC-similarity" or communicationstrategy = "CDC-towards" [
-      become "INIT_DB"
-      ]
-    if communicationstrategy = "Neighbourhood-based" [
-      become "IDLE_NB"
-      ]
-    if communicationstrategy = "Shortest-path-tree" [
-      become "IDLE_TE"
-      ]
+    finish_zbox_initialization FALSE
     ]
 end
 
-;; Hybrid method
-;; neighbourhood exploration
-to step_XPNB
-  broadcast (list "RANGE" who xcor ycor)
-  become "WTNB"
+
+to finish_zbox_initialization [leader]
+  ;;if objNo > 1 [become "IDLE_GROUP" stop]
+  if communicationstrategy = "Hybrid" [become "XPNB" stop]
+  if communicationstrategy = "Flooding" [become "IDLE" stop]
+  if communicationstrategy = "Direction-based" [become "XPNB" stop]
+  if communicationstrategy = "CDC-similarity" [become "XPNB" stop]
+  if communicationstrategy = "CDC-towards" [become "XPNB" stop]
+  if communicationstrategy = "Shortest-path-tree" [ifelse leader [become "ROOT_TE"] [become "IDLE_TE"] stop]  
+  if communicationstrategy = "GPSR" [ifelse leader [become "ROOT_GR"] [become "WTRT"] stop]
 end
 
-to step_WTNB
-  if has-message "RANGE" [
-    let msg received "RANGE"
-    let record but-first msg
-    set neighbourhood lput record neighbourhood
-    ]
-  if length neighbourhood = count comlink-neighbors [
-    ifelse is-surrounded [
-      set interior-num interior-num + 1
-      become "INER"
-      ][
-      set boundary-num boundary-num + 1
-      become "BNDY"
+
+;;;;;;; flooding algorithm start;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;states ("IDLE"), msgs ("AEXT");;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+to protocal_step_flooding
+  if state = "IDLE" [step_IDLE stop]
+end
+
+to step_IDLE
+  ;; when receieve a message AEXT
+  if has-message "AEXT" [
+    let msg but-first received "AEXT"
+    let record protocal_hopcount_decode msg
+    if not is-old record [
+      if visual-aids [ask patch-here [set pcolor black]]
+      update-local-history record TRUE
+      let nextmsg (protocal_hopcount_nextmsg msg [])
+      if not empty? nextmsg [broadcast fput "AEXT" nextmsg]
       ]
-    ]
+  ] 
+  ;; when sensing entering events  
+  let msgs on-sensing-movement TRUE
+  foreach msgs [ broadcast fput "AEXT" (protocal_hopcount_encode ?)]
+end
+;;;;;;;;;;;;flooding algorithm end;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;; hybrid algorithm start;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;setup states ("XPNB","WTNB"), monitering states ("INER","BNDY"), setup msg ("RANGE"), monitering msg ("OETR","FLOD")
+to protocal_step_hybrid
+  if state = "XPNB" [step_XPNB (list who xcor ycor) stop]
+  if state = "WTNB" [step_WTNB "set-surrounded-state" stop]
+  if state = "INER" [step_INER stop]
+  if state = "BNDY" [step_INER stop]
+end
+
+to set-surrounded-state
+  ifelse is-surrounded [
+    set interior-num interior-num + 1
+    become "INER"
+  ][
+    set boundary-num boundary-num + 1
+    become "BNDY"
+  ]
 end
 
 to step_INER 
   ;; on receiving an entering message from neighbour
   if has-message "OETR" [
-    let msg received "OETR"
-    let record but-first msg
+    let record but-first received "OETR"
     if not is-old record [
+      if visual-aids [ask patch-here [set pcolor black]]
       update-local-history record TRUE
-    ]
+      ]
     ]
   
   if has-message "FLOD" [
-    let msg received "FLOD"
-    let record but-first msg
+    let record but-first received "FLOD"
     if not is-old record [
+      if visual-aids [ask patch-here [set pcolor black]]
       update-local-history record TRUE
-    ]
+      ]
     ]
   ;; on sensing an entering event
   let msgs on-sensing-movement TRUE
-  foreach msgs [
-    broadcast fput "OETR" ?
-    ]
+  foreach msgs [broadcast fput "OETR" ?]
 end
 
 to step_BNDY
   if has-message "OETR" [
-    let msg received "OETR"
-    let record but-first msg
+    let record but-first received "OETR"
     if not is-old record [
+      if visual-aids [ask patch-here [set pcolor black]]
       update-local-history record TRUE
-    ]
+      ]
     ]
   
   if has-message "FLOD" [
-    let msg received "FLOD"
-    let record but-first msg
+    let record but-first received "FLOD"
     if not is-old record [
+      if visual-aids [ask patch-here [set pcolor black]]
       update-local-history record TRUE
-      broadcast msg
+      broadcast fput "FLOD" record
       ]
     ]
   ;; on sensing an entering event
   let msgs on-sensing-movement TRUE
-  foreach msgs [
-    broadcast fput "FLOD" ?
-    ]
+  foreach msgs [broadcast fput "FLOD" ?]
+end
+;;;;;;;; hybrid algorithm end ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;direction based algorithm (cyclic order);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;; init states ("XPNB","WTNB"), monitering states ("IDLE_DB"), init msg ("RANGE"), monitering msg ("AEXT")
+to protocal_step_direction_based
+  if state = "XPNB" [step_XPNB (list who xcor ycor bounding-box zr) stop]
+  if state = "WTNB" [step_WTNB "setup-neighbour-info-db" stop]
+  if state = "IDLE_DB" [step_IDLE_DB stop]
 end
 
-;; flooding method
-to step_IDLE
-  ;; when receieve a message AEXT
-  if has-message "AEXT" [
-    let msg received "AEXT"
-    let steps last msg
-    let record but-last (but-first msg)
-    if not is-old record [
-      update-local-history record TRUE
-      if (searching-steps != 0 and steps < searching-steps) or searching-steps = 0 
-      [ broadcast lput (steps + 1) (fput "AEXT" record) ]
-    ]
-  ]  
-  let msgs on-sensing-movement TRUE
-  foreach msgs [
-    broadcast lput 1 (fput "AEXT" ?)
-    ]
+to setup-neighbour-info-db
+  rank-neighbour-dir
+  set-towards-neighbours
+  if length neighbourhood != length towards-neighbour [set-similar-neighbours]
+  become "IDLE_DB"
 end
-
-
-;; direction-based method
-to step_INIT_DB
-  broadcast (list "RANGE" who xcor ycor bounding-box zr)
-  become "WAIT_DB"
-end
-
-to step_WAIT_DB
-  if has-message "RANGE" [
-    let msg received "RANGE"
-    let record but-first msg
-    set neighbourhood lput record neighbourhood
-    ]
-  if length neighbourhood = count comlink-neighbors [
-    ifelse communicationstrategy = "CDC-similarity" [
-      rank-neighbour-cdc-similarity
-      set-towards-neighbours
-      if length neighbourhood != length towards-neighbour [
-        set-similar-neighbours-cdc 2
-        ]
-      ]
-    [
-      rank-neighbour-dir
-      set-towards-neighbours
-      if length neighbourhood != length towards-neighbour [
-        set-similar-neighbours
-      ]
-    ]
-    ifelse communicationstrategy = "CDC-towards" [
-      become "IDLE_CT"
-      ]
-    [
-      become "IDLE_DB"
-    ]
-    ]
-end
-
 
 to step_IDLE_DB
   if has-message "AEXT" [
-    let msg received "AEXT"
-    let targets last msg
-    let towards-targets last but-last msg
-    let record but-first but-last but-last msg
-    if not is-old record [
-      update-local-history record TRUE
-      if member? who targets or empty? targets [
-        set msg lput (map [first ?] towards-neighbour) (fput "AEXT" record)
-        ifelse member? who towards-targets [
-          multicast msg []
-          ]
-        [
-          ifelse empty? towards-neighbour [
-            multicast msg (map [first ?] similar-neighbour)
-            ] 
-          [
-            multicast msg (map [first ?] towards-neighbour)
-            ]
-          ]
+    let multicast-msg but-first received "AEXT"
+    if protocal_multicast_istarget? multicast-msg who [
+      let hopcount-msg protocal_multicast_payload multicast-msg
+      let record protocal_hopcount_decode hopcount-msg
+      let towards-targets last record
+      set record but-last record
+      if not is-old record [
+        if visual-aids [ask patch-here [set pcolor black]]
+        update-local-history record TRUE
         ask patch-here [set pcolor black]
+        let msg lput (map [first ?] towards-neighbour) record
+        set msg protocal_hopcount_nextmsg hopcount-msg msg
+        if not empty? msg [
+          set multicast-msg ifelse-value (member? who towards-targets) [protocal_multicast_pack msg [] ] 
+            [ ifelse-value (empty? towards-neighbour) [protocal_multicast_pack msg (map [first ?] similar-neighbour)] 
+              [protocal_multicast_pack msg (map [first ?] towards-neighbour)]]
+          broadcast fput "AEXT" multicast-msg
         ]
       ]
     ]
+  ]
 
   let msgs on-sensing-movement TRUE
   foreach msgs [
-    let tmpmsg ?
-    let msg lput (map [first ?] towards-neighbour) (fput "AEXT" tmpmsg)
-    ifelse empty? towards-neighbour [
-        multicast msg (map [first ?] similar-neighbour)
-        ] 
-      [
-        multicast msg (map [first ?] towards-neighbour)
-        ]
-      ]
+    let msg protocal_hopcount_encode (lput (map [first ?] towards-neighbour) ?)
+    set msg ifelse-value empty? towards-neighbour [ protocal_multicast_pack msg (map [first ?] similar-neighbour) ] [ protocal_multicast_pack msg (map [first ?] towards-neighbour) ]
+    broadcast fput "AEXT" msg
+  ]
 end
+;;;;;;;;;;;;;;;;;;direction based algorithm (cyclic order);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; if targets is an empty list, the msg will be broadcasted
-to multicast [msg targets]
-  broadcast (lput targets msg)
+
+;;;;;;;;;;;;;;;;;;direction based algorithm (CDC-similarity);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;; init states ("XPNB","WTNB"), monitering states ("IDLE_DB"), init msg ("RANGE"), monitering msg ("AEXT")
+to protocal_step_CDC_similarity
+  if state = "XPNB" [step_XPNB (list who xcor ycor bounding-box zr) stop]
+  if state = "WTNB" [step_WTNB "setup-neighbour-info-cs" stop]
+  if state = "IDLE_DB" [step_IDLE_DB stop]
 end
+to setup-neighbour-info-cs
+  rank-neighbour-cdc-similarity
+  set-towards-neighbours
+  if length neighbourhood != length towards-neighbour [set-similar-neighbours-cdc 2] 
+  become "IDLE_DB" 
+end
+;;;;;;;;;;;;;;;;;;direction based algorithm (CDC-similarity);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+
+;;;;;;;;;;;;;;;;;;direction based algorithm (CDC-moving-towards);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;; init states ("XPNB","WTNB"), monitering states ("IDLE_CT"), init msg ("RANGE"), monitering msg ("AEXT")
+to protocal_step_CDC_towards
+  if state = "XPNB" [step_XPNB (list who xcor ycor bounding-box zr) stop]
+  if state = "WTNB" [step_WTNB "setup-neighbour-info-ct" stop]
+  if state = "IDLE_CT" [step_IDLE_CT stop]
+end
+to setup-neighbour-info-ct
+  rank-neighbour-dir
+  set-towards-neighbours
+  if length neighbourhood != length towards-neighbour [set-similar-neighbours]  
+  become "IDLE_CT"
+end
 ;; redirection based on whether if it is actually moving towards
 to step_IDLE_CT
   if has-message "AEXT" [
-    let msg received "AEXT"
-    let targets last msg
-    let is-target (member? who targets or empty? targets)
-    let record but-first but-last msg
-    if is-target and (not is-old record) [
-      ask patch-here [set pcolor black]
+    let multicast-msg but-first received "AEXT"
+    let hopcount-msg protocal_multicast_payload multicast-msg
+    let record protocal_hopcount_decode hopcount-msg
+    if (protocal_multicast_istarget? multicast-msg who) and (not is-old record) [
+      if visual-aids [ask patch-here [set pcolor black]]
       update-local-history record TRUE
-      ifelse moving-towards record-bbox record bounding-box targetzone-boundingbox [
-        multicast fput "AEXT" record []
-        ]
-      [
-        ifelse empty? towards-neighbour [
-          multicast fput "AEXT" record (map [first ?] similar-neighbour)
-          ] [
-          multicast fput "AEXT" record (map [first ?] towards-neighbour)
+      set hopcount-msg protocal_hopcount_nextmsg hopcount-msg []
+      if not empty? hopcount-msg [
+        set multicast-msg protocal_multicast_pack hopcount-msg ifelse-value (moving-towards record-bbox record bounding-box targetzone-boundingbox) [ [] ] [
+          ifelse-value (empty? towards-neighbour) [(map [first ?] similar-neighbour)] [(map [first ?] towards-neighbour)]
           ]
-        ]
+        broadcast fput "AEXT" multicast-msg
       ]
     ]
+  ]
   let msgs on-sensing-movement TRUE
   foreach msgs [
-    multicast (fput "AEXT" ?) []
+    let msg protocal_multicast_pack (protocal_hopcount_encode ?) []
+    broadcast fput "AEXT" msg
     ]
 end
+;;;;;;;;;;;;;;;;;;;;;;;;;;direction based algorithm (CDC-moving-towards);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; direct-neighbour-based method
-to step_IDLE_NB
-  ;; when receieve a message AEXT
-  if has-message "AEXT" [
-    let msg received "AEXT"
-    let record but-first msg
-    update-local-history record False
-    ]
-  
-  let msgs on-sensing-movement TRUE
-  foreach msgs [
-    broadcast fput "AEXT" ?
-    ]
-end 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;shortest path tree algorithm;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;states ("ROOT_TE","IDLE_TE","ROOT","DONE_TE"),init msg ("TREE"), monitering msg ("AEXT");;;;;;;;;;;;;;;;;;;;;;;;;;;;
+to protocal_step_tree
+  if state = "ROOT_TE" [step_ROOT_TE stop]
+  if state = "IDLE_TE" [step_IDLE_TE stop]
+  if state = "ROOT" or state = "DONE_TE" [step_DONE_TE stop]
+end
 
 ;; centralized method : shortest path tree
 to step_ROOT_TE 
@@ -426,6 +373,7 @@ to step_DONE_TE
   
   if has-message "AEXT" [
     let msg received "AEXT"
+    if visual-aids [ask patch-here [set pcolor black]]
     ifelse tree-parent = -1 [
       let record but-first msg
       if ground-truth-check [update-global-history record]
@@ -435,7 +383,7 @@ to step_DONE_TE
       send msg mote tree-parent
       ] 
     ]
-  
+   
   ;; on sensing entering event
   ifelse tree-parent = -1 [
     let msgs on-sensing-movement TRUE
@@ -443,12 +391,9 @@ to step_DONE_TE
   [
     let sensor self
     let in-range-objects objects with [within-sensing-range sensor]
-    ;;ifelse count in-range-objects > 0 [
-    ;;  highlight-sensing-range
-    ;;  ]
-    ;;[
-    ;;  clear-sensing-range
-    ;;  ]
+    ;;visual effect
+    if visual-aids [ifelse count in-range-objects > 0 [highlight-sensing-range] [clear-sensing-range]]
+    
     foreach sort in-range-objects [
       if which-active-record [who] of ? = -1 [
         let temprecord (list "NULL" 0 "NULL")
@@ -462,23 +407,127 @@ to step_DONE_TE
     close-inactive-records
     ]
 end
+;;;;;;;;;;;;;;;;;;;;;;;;;;shortest path tree algorithm;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-to centralized-cdc-validation [obj-id]
-  let location history-location global-history obj-id
-  if location >= 0 [
-    let its-history item location global-history
-    if length its-history > 1 [
-      let currentBBOX record-bbox (last its-history)
-      let previous-record proper-previous-record its-history record-timestamp (last its-history)
-      if not empty? previous-record [
-      let previousBBOX record-bbox previous-record
-      let predir CDC-dir previousBBOX currentBBOX
-      let curdir CDC-dir currentBBOX targetzone-boundingbox
-      ifelse not empty? (filter [member? ? predir] curdir) [log-gt TRUE] [log-gt FALSE]
+;;;;;;;;;;;;;;;;;;;;;;;;;;;Georouting (GPSR);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;init states ("ROOT_GR","WTRT","XPNB","WTNB"), monitering state ("IDLE"), init msgs ("RTPS","RANGE"), monitering msgs ("GRDY","FACE")
+to protocal_step_GPSR
+  if state = "ROOT_GR" [step_ROOT_GR stop]
+  if state = "WTRT" [step_WTRT stop]
+  if state = "XPNB" [step_XPNB (list who xcor ycor) stop]
+  if state = "WTNB" [step_WTNB "setup-neighbour-info-GR" stop]
+  if state = "IDLE" [step_IDLE_GR stop]
+end
+
+to step_ROOT_GR
+  set root (list who xcor ycor)
+  broadcast (list "RTPS" who xcor ycor)
+  become "XPNB"
+end
+
+to step_WTRT
+  if has-message "RTPS" [
+    set root but-first received "RTPS"
+    broadcast fput "RTPS" root
+    become "XPNB"
+    ]
+end
+
+to setup-neighbour-info-GR
+  set-closest-neighbour
+  rank-neighbour-dir
+  become "IDLE"
+end
+
+to redirect-GR [message root-distance prenode]
+  let msg message
+  ifelse last closest-neighbour < root-distance [
+    set msg protocal_sender_aware_pack msg who
+    send (fput "GRDY" msg) mote first closest-neighbour
+    ]
+  [
+    let tangle included-angle prenode
+    let nextstop next-cyclic-neighbour tangle
+    if not empty? nextstop [
+      set msg lput root-distance msg
+      set msg protocal_sender_aware_pack msg who
+      send (fput "FACE" msg) mote first nextstop
       ]
     ]
-  ]
+end
+
+to-report root-check [record]
+  ifelse who = first root [
+    if ground-truth-check [update-global-history record]
+    decide-on-history record
+    report TRUE
+    ] [
+    report FALSE
+    ]
+end
+
+to step_IDLE_GR
+  if has-message "GRDY" [
+    if visual-aids [ask patch-here [set pcolor black]]
+    let msg but-first received "GRDY"
+    set msg protocal_sender_aware_payload msg
+    let sender protocal_sender_aware_sender msg
+    set sender neighbour-by-id sender
+    let to-root-dis euclidean-distance (list xcor ycor) (but-first root) 
+    if not root-check msg [redirect-GR msg to-root-dis sender]
+    ]
+  
+  if has-message "FACE" [
+    if visual-aids [ask patch-here [set pcolor black]]
+    let msg but-first received "FACE"
+    let sender neighbour-by-id protocal_sender_aware_sender msg
+    set msg protocal_sender_aware_payload msg
+    let to-root-dis last msg
+    set msg but-last msg
+    if not root-check msg [redirect-GR msg to-root-dis sender]
+    ]
+  
+  ;; on sensing entering event
+  ifelse who = first root [
+    let msgs on-sensing-movement TRUE
+    ]
+  [
+    let sensor self
+    let in-range-objects objects with [within-sensing-range sensor]
+    ;;visual effect
+    if visual-aids [ifelse count in-range-objects > 0 [highlight-sensing-range] [clear-sensing-range]]
+    foreach sort in-range-objects [
+      if which-active-record [who] of ? = -1 [
+        let temprecord (list "NULL" 0 "NULL")
+        set temprecord replace-item 0 temprecord [who] of ?
+        set temprecord replace-item 1 temprecord ticks
+        set m lput temprecord m
+        let msg (list first temprecord who bounding-box item 1 temprecord)
+        let to-root-dis euclidean-distance (list xcor ycor) (but-first root)
+        redirect-GR msg to-root-dis root
+        ]
+      ]
+    close-inactive-records
+    ]  
+end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;Georouting (GPSR);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; neighbourhood exploration
+to step_XPNB [payload]
+  broadcast fput "RANGE" payload
+  become "WTNB"
+end
+
+to step_WTNB [neighbourhood-info-process]
+  if has-message "RANGE" [
+    let msg received "RANGE"
+    let record but-first msg
+    set neighbourhood lput record neighbourhood
+    ]
+  if length neighbourhood = count comlink-neighbors [
+    run neighbourhood-info-process
+    ]
 end
 
 ;; on sensing entering events, report messages to be spreaded 
@@ -486,16 +535,9 @@ to-report on-sensing-movement [keep-history]
   ;; on sensing an entering event
   let msgs []
   let sensor self
-  let in-range-objects objects with [within-sensing-range sensor]
-  
+  let in-range-objects objects with [within-sensing-range sensor] 
   ;;visual effect
-  ;;ifelse count in-range-objects > 0 [
-  ;;  highlight-sensing-range
-  ;;  ]
-  ;;[
-  ;;  clear-sensing-range
-  ;;  ]
-  
+  if visual-aids [ifelse count in-range-objects > 0 [highlight-sensing-range] [clear-sensing-range]]
   foreach sort in-range-objects [
     if which-active-record [who] of ? = -1 [
       let temprecord [ "NULL" 0 "NULL"]
@@ -554,54 +596,22 @@ to decide-on-history [record]
   ]
 end
 
-to-report moving-towards [azone bzone zzone]
-  let predir CDC-dir azone bzone
-  let curdir CDC-dir bzone zzone
-  ifelse not empty? (filter [member? ? predir] curdir) [
-    report TRUE
+
+to centralized-cdc-validation [obj-id]
+  let location history-location global-history obj-id
+  if location >= 0 [
+    let its-history item location global-history
+    if length its-history > 1 [
+      let currentBBOX record-bbox (last its-history)
+      let previous-record proper-previous-record its-history record-timestamp (last its-history)
+      if not empty? previous-record [
+      let previousBBOX record-bbox previous-record
+      let predir CDC-dir previousBBOX currentBBOX
+      let curdir CDC-dir currentBBOX targetzone-boundingbox
+      ifelse not empty? (filter [member? ? predir] curdir) [log-gt TRUE] [log-gt FALSE]
+      ]
     ]
-  [
-    report FALSE
-    ]
-end
-
-;; Assign labels to motes based on the MoteLable dropdown list
-to mote-labels
-  ask motes [
-    if MoteLabel = "none" [set label ""] ;; Hide the label
-    if MoteLabel = "mote id" [set label who] ;; Show mote id
-    if MoteLabel = "m" [set label m] ;; Show contents of m
-    if MoteLabel = "zr" [set label zr] ;; Show contents of m
   ]
-end
-
-;; Draw tail of objects' movement trajectory (width as assigned)
-to object-tails
-  ask objects [
-    ifelse show-tails 
-    [ask objects [pen-down
-                set pen-size tail-width]]
-    [ask objects [pen-up]]
-  ]
-end
-
-
-
-to highlight-sensing-range
-  ;ask patches in-radius s [
-   ; set pcolor yellow
-    ;]
-  ;set size s + world-width / 21
-  set shape "active_sensor"
-  adjust-mote-grid bounding-box
-end
-
-to clear-sensing-range
-  ;ask patches in-radius s [
-   ; set pcolor white
-    ;]
-  ;set size world-width / 21
-  become state
 end
 
 ;; report position of the open record with id of obj-id in the histroy table
@@ -623,154 +633,6 @@ to close-inactive-records
     ]
 end
 
-
-
-
-to display-history
-  clear-output
-  output-print "object-ID   mote-ID  entering-TIME"
-  foreach history [
-    foreach ? [
-      output-type first ?
-      output-type "          "
-      output-type item 1 ?
-      output-type "          "
-      output-print last ?
-    ]
-    output-print " "
-    ]
-end
-
-
-to report-true-dir
-  let currentdis point-region-distance (list xcor ycor) targetzone-boundingbox
-  if currentdis < predis [
-    type "Object "
-    type self
-    type " "
-    print "True moving towards"
-    ]
-  set predis currentdis
-end
-
-to create-grid [bbox]
-  let topcor item 0 bbox
-  let leftcor item 1 bbox
-  let bottomcor item 2 bbox
-  let rightcor item 3 bbox
-  let previous 0
-  create-gridpoints 1 [
-    setxy min-pxcor topcor
-    set previous self]
-  create-gridpoints 1 [
-    setxy max-pxcor topcor
-    create-gridline-with previous
-    ]
-  create-gridpoints 1 [
-    setxy min-pxcor bottomcor
-    set previous self
-    ]
-  create-gridpoints 1 [
-    setxy max-pxcor bottomcor
-    create-gridline-with previous
-    ]
-  create-gridpoints 1 [
-    setxy leftcor min-pycor
-    set previous self
-    ]
-  create-gridpoints 1 [
-    setxy leftcor max-pycor
-    create-gridline-with previous
-    ]
-  create-gridpoints 1 [
-    setxy rightcor min-pycor
-    set previous self
-    ]
-  create-gridpoints 1 [
-    setxy rightcor max-pycor
-    create-gridline-with previous
-    ]
-  ask gridlines [
-    set shape "gridline"
-    set color red
-    ]
-end
-
-to create-mote-grid
-  let previous 0
-  let xmintop 0
-  let xminbottom 0
-  let leftymin 0
-  let rightymin 0
-  let xmaxbottom 0
-  let xmaxtop 0
-  let rightymax 0
-  let leftymax 0
-  create-motegridpoints 1 [
-    setxy min-pxcor min-pycor
-    set previous self
-    set xmintop self
-    ]
-  create-motegridpoints 1 [
-    setxy max-pxcor min-pycor
-    create-motegridline-with previous
-    set xmaxtop self
-    ]
-  create-motegridpoints 1 [
-    setxy min-pxcor min-pycor
-    set previous self
-    set xminbottom self
-    ]
-  create-motegridpoints 1 [
-    setxy max-pxcor min-pycor
-    create-motegridline-with previous
-    set xmaxbottom self
-    ]
-  create-motegridpoints 1 [
-    setxy min-pxcor min-pycor
-    set previous self
-    set leftymin self
-    ]
-  create-motegridpoints 1 [
-    setxy min-pxcor max-pycor
-    create-motegridline-with previous
-    set leftymax self
-    ]
-  create-motegridpoints 1 [
-    setxy max-pxcor min-pycor
-    set previous self
-    set rightymin self
-    ]
-  create-motegridpoints 1 [
-    setxy max-pxcor max-pycor
-    create-motegridline-with previous
-    set rightymax self
-    ] 
-  ask motegridlines [
-    set shape "gridline"
-    set color green
-    ]
-  set motegridanchor-list (list xmintop xminbottom leftymin rightymin xmaxbottom xmaxtop rightymax leftymax) 
-end
-
-to adjust-mote-grid [bbox]
-  let topcor item 0 bbox
-  if topcor > max-pycor [set topcor max-pycor]
-  let leftcor item 1 bbox
-  if leftcor < min-pxcor [set leftcor max-pxcor]
-  let bottomcor item 2 bbox
-  if bottomcor < min-pycor [set bottomcor min-pycor]
-  let rightcor item 3 bbox
-  if rightcor > max-pxcor [set rightcor max-pxcor]
-  ask item 0 motegridanchor-list [setxy min-pxcor topcor]
-  ask item 1 motegridanchor-list [setxy min-pxcor bottomcor]
-  ask item 2 motegridanchor-list [setxy leftcor min-pycor]
-  ask item 3 motegridanchor-list [setxy rightcor min-pycor]
-  ask item 4 motegridanchor-list [setxy max-pxcor bottomcor]
-  ask item 5 motegridanchor-list [setxy max-pxcor topcor]
-  ask item 6 motegridanchor-list [setxy rightcor max-pycor]
-  ask item 7 motegridanchor-list [setxy leftcor max-pycor]
-end
 
 to count-event
   if componentID = maincomponentID [
@@ -801,6 +663,70 @@ to log-predicate [predicate]
     set testresultline lput "," (lput FALSE testresultline)
     set predicate-list lput 0 predicate-list
     ]
+end
+
+to setup-zzone
+  ;; set target region
+  let anchornum 5
+  ;; set a size of square in which the z-zone can be located
+  let boxsize world-width / 7
+  let box-top random-box-top boxsize
+  let box-right random-box-right boxsize
+  create-ordered-tzonevertices anchornum [
+    let x-offset random boxsize
+    let y-offset random boxsize
+    setxy (box-right - x-offset) (box-top - y-offset) 
+    set size 2
+    set color red
+    ] 
+  ask patches with [in-convex-hull] [
+    set pcolor red
+    ]  
+end
+
+to setup-output  
+  set filename "../mtz-tests/flooding-cdc.csv"
+  file-close-all
+  if output-to-file [
+  if file-exists? filename [file-delete filename]
+  file-open filename
+  file-print "Object, ticks, decentralized, centralized"
+  ]
+  print "Object, ticks, decentralized, centralized"
+end
+
+to setup-objects
+  let boxsize world-width / 80
+  let box-top random-box-top boxsize
+  let box-right random-box-right boxsize
+  ask objects [
+    set predis 0
+    let x-offset random boxsize
+    let y-offset random boxsize
+    setxy (box-right - x-offset) (box-top - y-offset)
+    facexy 0 0
+    ]
+end
+
+to output-load-balance
+  set-current-directory user-directory
+  let lb-filename communicationstrategy
+  ifelse empty? load-balance-data [
+    set lb-filename (word lb-filename "_loadbalance")
+    ]
+  [
+    set lb-filename (word lb-filename "_" load-balance-data)
+    ]
+  if substring lb-filename (length lb-filename - 4) (length lb-filename) != ".csv" [
+    set lb-filename (word lb-filename ".csv")
+    ]
+  if file-exists? lb-filename [file-delete lb-filename]
+  file-open lb-filename
+  file-print "mote,msgsent"
+  ask maincomponent [
+    file-print (word who "," num-msgsent)
+    ]
+  file-close
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -836,7 +762,7 @@ INPUTBOX
 60
 105
 Netsize
-20
+500
 1
 0
 Number
@@ -931,7 +857,7 @@ INPUTBOX
 110
 105
 ObjNo
-10
+1
 1
 0
 Number
@@ -1038,7 +964,7 @@ CHOOSER
 Seed
 Seed
 "none" "random" "manual"
-1
+2
 
 INPUTBOX
 15
@@ -1046,7 +972,7 @@ INPUTBOX
 155
 755
 current-seed
-1448017846
+-540677238
 1
 0
 Number
@@ -1059,7 +985,7 @@ CHOOSER
 move-type
 move-type
 "Simple Linear" "CRW" "Boids/Flocking"
-2
+1
 
 SWITCH
 15
@@ -1080,16 +1006,16 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-0
+1
 
 CHOOSER
 175
 670
-330
+347
 715
 CommunicationStrategy
 CommunicationStrategy
-"Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Neighbourhood-based" "Shortest-path-tree" "CDC-towards"
+"Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
 6
 
 MONITOR
@@ -1197,7 +1123,7 @@ max-align-turn
 max-align-turn
 0.0
 20.0
-5
+6
 0.25
 1
 degrees
@@ -1212,7 +1138,7 @@ max-cohere-turn
 max-cohere-turn
 0.0
 20.0
-3
+4
 0.25
 1
 degrees
@@ -1227,11 +1153,80 @@ max-separate-turn
 max-separate-turn
 0.0
 20.0
-1.5
+2
 0.25
 1
 degrees
 HORIZONTAL
+
+SLIDER
+350
+880
+542
+913
+min-group-pop
+min-group-pop
+1
+10
+1
+1
+1
+objects
+HORIZONTAL
+
+SLIDER
+360
+940
+532
+973
+group-radius
+group-radius
+0
+5
+0
+1
+1
+hops
+HORIZONTAL
+
+INPUTBOX
+895
+850
+1130
+910
+load-balance-data
+NIL
+1
+0
+String
+
+BUTTON
+1035
+920
+1117
+953
+OUTPUT
+output-load-balance
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+SWITCH
+220
+115
+342
+148
+visual-aids
+visual-aids
+0
+1
+-1000
 
 @#$#@#$#@
 ## PROTOCOL
@@ -1302,7 +1297,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

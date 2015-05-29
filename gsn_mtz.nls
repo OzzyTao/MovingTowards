@@ -137,6 +137,7 @@ end
 
 ;; Broadcasting messages involves sending them to all link neighbors
 to broadcast [message]
+  set num-msgsent num-msgsent + 1
   ask comlink-neighbors [receive message]
   if trackmsg [
     update-msg-count "SENT" message
@@ -145,6 +146,7 @@ end
 
 ;; Sending messages is a unicast to a specified target
 to send [message target]
+  set num-msgsent num-msgsent + 1
   ask target [receive message]
   if trackmsg [
     update-msg-count "SENT" message

@@ -1,3 +1,9 @@
+to-report neighbour-by-id [id]
+  foreach neighbourhood [
+    if first ? = id [report ?]
+    ]
+  report []
+end
 
 to-report next-cyclic-neighbour [tangle]
   let index 0
@@ -108,6 +114,29 @@ to rank-neighbour-dir
   set neighbourhood sort-by [ (last ?1) < (last ?2) ] neighbourhood
 end
 
+to set-closest-neighbour
+  set closest-neighbour []
+  let pointa (list (item 1 root) (item 2 root))
+  foreach neighbourhood [
+    let pointb (list (item 1 ?) (item 2 ?))
+    let to-root-dis euclidean-distance pointa pointb
+    ifelse empty? closest-neighbour [
+      set closest-neighbour (list (first ?) to-root-dis)
+      ]
+    [
+      if to-root-dis < last closest-neighbour [
+        set closest-neighbour (list (first ?) to-root-dis)
+        ]
+      ]
+    ]
+end
+
+to-report euclidean-distance [pointa pointb]
+  let deltax first pointa - first pointb
+  let deltay last pointa - last pointb
+  report sqrt (deltax ^ 2 + deltay ^ 2)
+end
+
 to set-towards-neighbours 
   foreach neighbourhood [
     let bbox item 3 ?
@@ -126,6 +155,14 @@ to-report union-boundingbox [bba bbb]
   let bottom_c min (list item 2 bba item 2 bbb)
   let right_c max (list item 3 bba item 3 bbb)
   report (list top_c left_c bottom_c right_c) 
+end
+
+to-report union-boundingbox-group [bboxlist]
+  let top_c max (map [item 0 ?] bboxlist)
+  let left_c min (map [item 1 ?] bboxlist)
+  let bottom_c min (map [item 2 ?] bboxlist)
+  let right_c max (map [item 3 ?] bboxlist)
+  report (list top_c left_c bottom_c right_c)
 end
 
 to-report point-in-box [bbox]
@@ -375,4 +412,15 @@ to-report disk-component-relation [disk component]
   ]
 end
 
+
+to-report moving-towards [azone bzone zzone]
+  let predir CDC-dir azone bzone
+  let curdir CDC-dir bzone zzone
+  ifelse not empty? (filter [member? ? predir] curdir) [
+    report TRUE
+    ]
+  [
+    report FALSE
+    ]
+end
 

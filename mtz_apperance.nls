@@ -1,0 +1,185 @@
+;; Assign labels to motes based on the MoteLable dropdown list
+to mote-labels
+  ask motes [
+    if MoteLabel = "none" [set label ""] ;; Hide the label
+    if MoteLabel = "mote id" [set label who] ;; Show mote id
+    if MoteLabel = "m" [set label m] ;; Show contents of m
+    if MoteLabel = "zr" [set label zr] ;; Show contents of m
+  ]
+end
+
+;; Draw tail of objects' movement trajectory (width as assigned)
+to object-tails
+  ask objects [
+    ifelse show-tails 
+    [ask objects [pen-down
+                set pen-size tail-width]]
+    [ask objects [pen-up]]
+  ]
+end
+
+
+
+to highlight-sensing-range
+  ;ask patches in-radius s [
+   ; set pcolor yellow
+    ;]
+  ;set size s + world-width / 21
+  set shape "active_sensor"
+  adjust-mote-grid bounding-box
+end
+
+to clear-sensing-range
+  ;ask patches in-radius s [
+   ; set pcolor white
+    ;]
+  ;set size world-width / 21
+  become state
+end
+
+
+to display-history
+  clear-output
+  output-print "object-ID   mote-ID  entering-TIME"
+  foreach history [
+    foreach ? [
+      output-type first ?
+      output-type "          "
+      output-type item 1 ?
+      output-type "          "
+      output-print last ?
+    ]
+    output-print " "
+    ]
+end
+
+
+to report-true-dir
+  let currentdis point-region-distance (list xcor ycor) targetzone-boundingbox
+  if currentdis < predis [
+    type "Object "
+    type self
+    type " "
+    print "True moving towards"
+    ]
+  set predis currentdis
+end
+
+to create-grid [bbox]
+  let topcor item 0 bbox
+  let leftcor item 1 bbox
+  let bottomcor item 2 bbox
+  let rightcor item 3 bbox
+  let previous 0
+  create-gridpoints 1 [
+    setxy min-pxcor topcor
+    set previous self]
+  create-gridpoints 1 [
+    setxy max-pxcor topcor
+    create-gridline-with previous
+    ]
+  create-gridpoints 1 [
+    setxy min-pxcor bottomcor
+    set previous self
+    ]
+  create-gridpoints 1 [
+    setxy max-pxcor bottomcor
+    create-gridline-with previous
+    ]
+  create-gridpoints 1 [
+    setxy leftcor min-pycor
+    set previous self
+    ]
+  create-gridpoints 1 [
+    setxy leftcor max-pycor
+    create-gridline-with previous
+    ]
+  create-gridpoints 1 [
+    setxy rightcor min-pycor
+    set previous self
+    ]
+  create-gridpoints 1 [
+    setxy rightcor max-pycor
+    create-gridline-with previous
+    ]
+  ask gridlines [
+    set shape "gridline"
+    set color red
+    ]
+end
+
+to create-mote-grid
+  let previous 0
+  let xmintop 0
+  let xminbottom 0
+  let leftymin 0
+  let rightymin 0
+  let xmaxbottom 0
+  let xmaxtop 0
+  let rightymax 0
+  let leftymax 0
+  create-motegridpoints 1 [
+    setxy min-pxcor min-pycor
+    set previous self
+    set xmintop self
+    ]
+  create-motegridpoints 1 [
+    setxy max-pxcor min-pycor
+    create-motegridline-with previous
+    set xmaxtop self
+    ]
+  create-motegridpoints 1 [
+    setxy min-pxcor min-pycor
+    set previous self
+    set xminbottom self
+    ]
+  create-motegridpoints 1 [
+    setxy max-pxcor min-pycor
+    create-motegridline-with previous
+    set xmaxbottom self
+    ]
+  create-motegridpoints 1 [
+    setxy min-pxcor min-pycor
+    set previous self
+    set leftymin self
+    ]
+  create-motegridpoints 1 [
+    setxy min-pxcor max-pycor
+    create-motegridline-with previous
+    set leftymax self
+    ]
+  create-motegridpoints 1 [
+    setxy max-pxcor min-pycor
+    set previous self
+    set rightymin self
+    ]
+  create-motegridpoints 1 [
+    setxy max-pxcor max-pycor
+    create-motegridline-with previous
+    set rightymax self
+    ] 
+  ask motegridlines [
+    set shape "gridline"
+    set color green
+    ]
+  set motegridanchor-list (list xmintop xminbottom leftymin rightymin xmaxbottom xmaxtop rightymax leftymax) 
+end
+
+to adjust-mote-grid [bbox]
+  let topcor item 0 bbox
+  if topcor > max-pycor [set topcor max-pycor]
+  let leftcor item 1 bbox
+  if leftcor < min-pxcor [set leftcor max-pxcor]
+  let bottomcor item 2 bbox
+  if bottomcor < min-pycor [set bottomcor min-pycor]
+  let rightcor item 3 bbox
+  if rightcor > max-pxcor [set rightcor max-pxcor]
+  ask item 0 motegridanchor-list [setxy min-pxcor topcor]
+  ask item 1 motegridanchor-list [setxy min-pxcor bottomcor]
+  ask item 2 motegridanchor-list [setxy leftcor min-pycor]
+  ask item 3 motegridanchor-list [setxy rightcor min-pycor]
+  ask item 4 motegridanchor-list [setxy max-pxcor bottomcor]
+  ask item 5 motegridanchor-list [setxy max-pxcor topcor]
+  ask item 6 motegridanchor-list [setxy rightcor max-pycor]
+  ask item 7 motegridanchor-list [setxy leftcor max-pycor]
+end

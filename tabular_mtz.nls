@@ -136,3 +136,90 @@ to log-results [logline]
     ] 
   ]
 end
+
+to-report protocal_hopcount_pack [payload hopcount]
+  ifelse hopcount > 0 [
+    report (list payload hopcount)
+    ] 
+  [
+    report []
+    ]
+end
+
+to-report protocal_hopcount_payload [msg]
+  report first msg
+end
+
+to-report protocal_hopcount_count [msg]
+  report last msg
+end
+
+to-report protocal_hopcount_nextmsg [msg newpayload]
+  ifelse searching-steps > 0 [
+    let payload ifelse-value (empty? newpayload) [(protocal_hopcount_payload msg)] [newpayload]
+    report protocal_hopcount_pack payload ((protocal_hopcount_count msg) - 1)
+    ] 
+  [
+    report msg
+    ]
+end
+
+to-report protocal_hopcount_encode [msg]
+  ifelse searching-steps > 0 [
+    report protocal_hopcount_pack msg searching-steps
+    ] [
+    report msg
+    ]
+end
+
+to-report protocal_hopcount_decode [msg]
+  ifelse searching-steps > 0 [
+    report protocal_hopcount_payload msg
+    ] [
+    report msg
+    ]  
+end
+
+
+
+to-report protocal_multicast_pack [payload targets]
+  ifelse not empty? payload [
+    report (list payload targets)
+  ]
+  [
+    report []
+    ]
+end 
+
+to-report protocal_multicast_payload [msg]
+  report first msg
+end
+
+to-report protocal_multicast_targets [msg]
+  report last msg
+end
+
+to-report protocal_multicast_istarget? [msg selfid]
+  let targets protocal_multicast_targets msg
+  ifelse (empty? targets) or (member? selfid targets) [
+    report TRUE
+    ]
+  [
+    report FALSE
+    ]
+end
+
+
+
+
+to-report protocal_sender_aware_pack [msg sender]
+  report (list msg sender)
+end
+
+to-report protocal_sender_aware_payload [msg]
+  report first msg
+end
+
+to-report protocal_sender_aware_sender [msg]
+  report last msg
+end
