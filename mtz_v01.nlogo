@@ -471,8 +471,8 @@ to step_IDLE_GR
   if has-message "GRDY" [
     if visual-aids [ask patch-here [set pcolor black]]
     let msg but-first received "GRDY"
-    set msg protocal_sender_aware_payload msg
     let sender protocal_sender_aware_sender msg
+    set msg protocal_sender_aware_payload msg
     set sender neighbour-by-id sender
     let to-root-dis euclidean-distance (list xcor ycor) (but-first root) 
     if not root-check msg [redirect-GR msg to-root-dis sender]
@@ -766,7 +766,7 @@ INPUTBOX
 60
 435
 Netsize
-500
+250
 1
 0
 Number
@@ -976,7 +976,7 @@ INPUTBOX
 295
 620
 current-seed
--540677238
+-640111348
 1
 0
 Number
@@ -1010,7 +1010,7 @@ CHOOSER
 NetworkStructure
 NetworkStructure
 "UDG" "GG" "RNG"
-1
+0
 
 CHOOSER
 10
@@ -1050,7 +1050,7 @@ INPUTBOX
 312
 135
 searching-steps
-0
+3
 1
 0
 Number
@@ -1392,7 +1392,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
