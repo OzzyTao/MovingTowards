@@ -728,6 +728,10 @@ to output-load-balance
     ]
   file-close
 end
+
+to kill-random-sensor
+  
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 355
@@ -864,9 +868,9 @@ Number
 
 SWITCH
 10
-665
+715
 125
-698
+748
 show-links
 show-links
 1
@@ -875,9 +879,9 @@ show-links
 
 SWITCH
 10
-700
+750
 125
-733
+783
 show-tails
 show-tails
 1
@@ -886,9 +890,9 @@ show-tails
 
 INPUTBOX
 130
-700
+750
 210
-760
+810
 tail-width
 3
 1
@@ -897,9 +901,9 @@ Number
 
 CHOOSER
 10
-740
+790
 110
-785
+835
 MoteLabel
 MoteLabel
 "none" "mote id" "m" "zr"
@@ -1219,9 +1223,9 @@ NIL
 
 SWITCH
 130
-665
+715
 252
-698
+748
 visual-aids
 visual-aids
 0
@@ -1280,9 +1284,9 @@ Moving Object Settings
 
 TEXTBOX
 15
-645
+695
 165
-663
+713
 Visual Effects
 13
 0.0
@@ -1307,6 +1311,17 @@ Algorithm Settings
 13
 0.0
 1
+
+SWITCH
+10
+620
+147
+653
+sensorfailure
+sensorfailure
+1
+1
+-1000
 
 @#$#@#$#@
 ## PROTOCOL
