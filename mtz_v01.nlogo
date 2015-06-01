@@ -83,6 +83,7 @@ to go
     mote-labels
     object-tails
     set move-step move-step + 1
+    if sensorfailure [kill-random-sensor]
   ]
   tick
 end
@@ -380,7 +381,7 @@ to step_DONE_TE
       decide-on-history record
       ]
     [
-      send msg mote tree-parent
+      if mote tree-parent != nobody [send msg mote tree-parent]
       ] 
     ]
    
@@ -401,7 +402,7 @@ to step_DONE_TE
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
-        send (fput "AEXT" msg) mote tree-parent
+        if mote tree-parent != nobody [send (fput "AEXT" msg) mote tree-parent]
         ]
       ]
     close-inactive-records
@@ -730,7 +731,16 @@ to output-load-balance
 end
 
 to kill-random-sensor
-  
+  ask one-of motes [
+    let dying-node who
+    ask link-neighbors [
+      set neighbourhood remove-item-by-key neighbourhood dying-node
+      set towards-neighbour remove-item-by-key towards-neighbour dying-node
+      set similar-neighbour remove-item-by-key similar-neighbour dying-node
+      if is-list? closest-neighbour and dying-node = first closest-neighbour [set-closest-neighbour]
+      ]
+    die
+    ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -766,7 +776,7 @@ INPUTBOX
 60
 435
 Netsize
-1000
+250
 1
 0
 Number
@@ -822,7 +832,7 @@ INPUTBOX
 60
 230
 c
-10
+28.2842712474619
 1
 0
 Number
@@ -833,7 +843,7 @@ INPUTBOX
 110
 230
 s
-5
+7.071067811865475
 1
 0
 Number
@@ -976,7 +986,7 @@ INPUTBOX
 295
 620
 current-seed
--142576340
+-1815355421
 1
 0
 Number
@@ -1330,7 +1340,7 @@ SWITCH
 208
 fixed-connectivity
 fixed-connectivity
-1
+0
 1
 -1000
 

@@ -16,6 +16,16 @@ to-report record-timestamp [record]
   report item 3 record
 end
 
+to-report remove-item-by-key [rlist key]
+  let index 0
+  foreach rlist [
+    if first ? = key [
+      report remove-item index rlist
+      ]
+    set index index + 1
+    ]
+  report rlist
+end 
 
 to update-global-history [record]
   let obj-id first record
