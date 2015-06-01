@@ -71,20 +71,17 @@ end
 ;; Run the algorithm
 to go
   clear-ctmsgs
-  set ct-event 0
-  set ct-dgt -1
-  set ct-cgt -1
-  set predicate-list []
-  set groundtruth-list []
   ask maincomponent [step]
   if remainder ticks CMR = 0 [ 
+    reset-log-cache
     if visual-aids [ask motes [ask patch-here [set pcolor white]]]
     move-objects
     mote-labels
     object-tails
     set move-step move-step + 1
-    if sensorfailure [kill-random-sensor]
   ]
+  if remainder ticks CMR = (CMR - 1) [print-log]
+  if ticks = fail-ticks [kill-random-sensor]
   tick
 end
 
@@ -377,7 +374,6 @@ to step_DONE_TE
     if visual-aids [ask patch-here [set pcolor black]]
     ifelse tree-parent = -1 [
       let record but-first msg
-      if ground-truth-check [update-global-history record]
       decide-on-history record
       ]
     [
@@ -402,6 +398,10 @@ to step_DONE_TE
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
+        if ground-truth-check [
+          update-global-history msg
+          centralized-cdc-validation first msg
+          ]
         if mote tree-parent != nobody [send (fput "AEXT" msg) mote tree-parent]
         ]
       ]
@@ -460,10 +460,10 @@ end
 
 to-report root-check [record]
   ifelse who = first root [
-    if ground-truth-check [update-global-history record]
     decide-on-history record
     report TRUE
-    ] [
+    ] 
+  [
     report FALSE
     ]
 end
@@ -505,6 +505,10 @@ to step_IDLE_GR
         set temprecord replace-item 1 temprecord ticks
         set m lput temprecord m
         let msg (list first temprecord who bounding-box item 1 temprecord)
+        if ground-truth-check [
+          update-global-history msg
+          centralized-cdc-validation first msg
+          ]
         let to-root-dis euclidean-distance (list xcor ycor) (but-first root)
         redirect-GR msg to-root-dis root
         ]
@@ -587,9 +591,6 @@ to decide-on-history [record]
       if not empty? previous-record [
         let previousBBOX record-bbox previous-record
         ifelse moving-towards previousBBOX currentBBOX targetzone-boundingbox [log-predicate TRUE] [log-predicate FALSE]
-      ]
-      if ground-truth-check [
-      centralized-cdc-validation obj-id
       ]
       log-results testresultline
       count-event
@@ -731,16 +732,31 @@ to output-load-balance
 end
 
 to kill-random-sensor
-  ask one-of motes [
-    let dying-node who
-    ask link-neighbors [
-      set neighbourhood remove-item-by-key neighbourhood dying-node
-      set towards-neighbour remove-item-by-key towards-neighbour dying-node
-      set similar-neighbour remove-item-by-key similar-neighbour dying-node
-      if is-list? closest-neighbour and dying-node = first closest-neighbour [set-closest-neighbour]
+  let num-to-kill ifelse-value is-number? failure-sensor-proportion [ceiling (failure-sensor-proportion / 100 * netsize)] [1]
+  with-local-randomness [
+  ask n-of num-to-kill motes [
+      let dying-node who
+      ask link-neighbors [
+        set neighbourhood remove-item-by-key neighbourhood dying-node
+        set towards-neighbour remove-item-by-key towards-neighbour dying-node
+        set similar-neighbour remove-item-by-key similar-neighbour dying-node
+        if is-list? closest-neighbour and dying-node = first closest-neighbour [set-closest-neighbour]
       ]
-    die
+      die
     ]
+  ]
+end
+
+to reset-log-cache
+  set ct-event 0
+  set ct-dgt -1
+  set ct-cgt -1
+  set predicate-list []
+  set groundtruth-list []
+end
+
+to print-log
+  print (word "ct-event:" ct-event " ct-dgt:" ct-dgt " ct-cgt:" ct-cgt " predicate:" predicate-list " groundtruth:" groundtruth-list)
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -776,7 +792,7 @@ INPUTBOX
 60
 435
 Netsize
-250
+500
 1
 0
 Number
@@ -817,9 +833,9 @@ NIL
 
 SWITCH
 10
-585
+565
 130
-618
+598
 trackmsg
 trackmsg
 0
@@ -843,7 +859,7 @@ INPUTBOX
 110
 230
 s
-7.071067811865475
+5
 1
 0
 Number
@@ -878,9 +894,9 @@ Number
 
 SWITCH
 10
-715
+725
 125
-748
+758
 show-links
 show-links
 1
@@ -889,9 +905,9 @@ show-links
 
 SWITCH
 10
-750
+760
 125
-783
+793
 show-tails
 show-tails
 1
@@ -900,9 +916,9 @@ show-tails
 
 INPUTBOX
 130
-750
+760
 210
-810
+820
 tail-width
 3
 1
@@ -911,9 +927,9 @@ Number
 
 CHOOSER
 10
-790
+800
 110
-835
+845
 MoteLabel
 MoteLabel
 "none" "mote id" "m" "zr"
@@ -972,9 +988,9 @@ recv-number-msg-totals
 
 CHOOSER
 155
-515
+495
 295
-560
+540
 Seed
 Seed
 "none" "random" "manual"
@@ -982,11 +998,11 @@ Seed
 
 INPUTBOX
 155
-560
+540
 295
-620
+600
 current-seed
--1815355421
+1164070185
 1
 0
 Number
@@ -1003,9 +1019,9 @@ move-type
 
 SWITCH
 10
-515
+495
 152
-548
+528
 output-to-file
 output-to-file
 1
@@ -1030,7 +1046,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
-6
+4
 
 MONITOR
 1405
@@ -1078,9 +1094,9 @@ Number
 
 SWITCH
 10
-480
+460
 192
-513
+493
 ground-truth-check
 ground-truth-check
 0
@@ -1089,9 +1105,9 @@ ground-truth-check
 
 SWITCH
 10
-550
+530
 152
-583
+563
 calc-diameter
 calc-diameter
 1
@@ -1233,9 +1249,9 @@ NIL
 
 SWITCH
 130
-715
+725
 252
-748
+758
 visual-aids
 visual-aids
 0
@@ -1264,9 +1280,9 @@ Group Movements
 
 TEXTBOX
 10
-460
+440
 160
-478
+458
 Experiment Settings
 13
 0.0
@@ -1294,9 +1310,9 @@ Moving Object Settings
 
 TEXTBOX
 15
-695
+705
 165
-713
+723
 Visual Effects
 13
 0.0
@@ -1324,12 +1340,12 @@ Algorithm Settings
 
 SWITCH
 10
-620
+600
 147
-653
+633
 sensorfailure
 sensorfailure
-1
+0
 1
 -1000
 
@@ -1343,6 +1359,28 @@ fixed-connectivity
 0
 1
 -1000
+
+INPUTBOX
+10
+640
+150
+700
+failure-sensor-proportion
+20
+1
+0
+Number
+
+INPUTBOX
+160
+640
+295
+700
+fail-ticks
+1000
+1
+0
+Number
 
 @#$#@#$#@
 ## PROTOCOL
@@ -1413,7 +1451,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
