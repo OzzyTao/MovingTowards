@@ -766,7 +766,7 @@ INPUTBOX
 60
 435
 Netsize
-250
+1000
 1
 0
 Number
@@ -822,7 +822,7 @@ INPUTBOX
 60
 230
 c
-20
+10
 1
 0
 Number
@@ -968,7 +968,7 @@ CHOOSER
 Seed
 Seed
 "none" "random" "manual"
-2
+1
 
 INPUTBOX
 155
@@ -976,7 +976,7 @@ INPUTBOX
 295
 620
 current-seed
--640111348
+-142576340
 1
 0
 Number
@@ -1319,6 +1319,17 @@ SWITCH
 653
 sensorfailure
 sensorfailure
+1
+1
+-1000
+
+SWITCH
+165
+175
+332
+208
+fixed-connectivity
+fixed-connectivity
 1
 1
 -1000

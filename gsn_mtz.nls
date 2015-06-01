@@ -18,6 +18,7 @@ undirected-link-breed [comlinks comlink]
 
 ;; Runs all the tasks common to every algorithm for setting up the world
 to setup
+  valide-input
   clear-all ;; Clear the world
   reset-ticks
   ;; Options to use random seed in setup, depending on interface drop-down (and unput box) selection:
@@ -790,4 +791,14 @@ to-report avg-node-degree
   let totaldegree 0
   ask motes [set totaldegree totaldegree + node-degree]
   report totaldegree / (count motes)
+end
+
+to valide-input 
+  if fixed-connectivity [
+    ;;;;; set c and s based on network size
+    let changefactor netsize / 500
+    set changefactor sqrt changefactor
+    set s 5 / changefactor
+    set c 20 / changefactor
+    ]
 end
