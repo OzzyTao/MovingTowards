@@ -80,8 +80,10 @@ to go
     object-tails
     set move-step move-step + 1
   ]
+  if sensorfailure [
   if remainder ticks CMR = (CMR - 1) [print-log]
   if ticks = fail-ticks [kill-random-sensor]
+  ]
   tick
 end
 
@@ -164,7 +166,7 @@ to protocal_step_hybrid
   if state = "XPNB" [step_XPNB (list who xcor ycor) stop]
   if state = "WTNB" [step_WTNB "set-surrounded-state" stop]
   if state = "INER" [step_INER stop]
-  if state = "BNDY" [step_INER stop]
+  if state = "BNDY" [step_BNDY stop]
 end
 
 to set-surrounded-state
@@ -711,7 +713,8 @@ to setup-objects
 end
 
 to output-load-balance
-  set-current-directory user-directory
+  ;;set-current-directory user-directory
+  set-current-directory "/Users/yaguangt1/Desktop/"
   let lb-filename communicationstrategy
   ifelse empty? load-balance-data [
     set lb-filename (word lb-filename "_loadbalance")
@@ -994,7 +997,7 @@ CHOOSER
 Seed
 Seed
 "none" "random" "manual"
-1
+2
 
 INPUTBOX
 155
@@ -1002,7 +1005,7 @@ INPUTBOX
 295
 600
 current-seed
--887420101
+-640111348
 1
 0
 Number
@@ -1046,7 +1049,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
-6
+1
 
 MONITOR
 1405
@@ -1345,7 +1348,7 @@ SWITCH
 633
 sensorfailure
 sensorfailure
-0
+1
 1
 -1000
 
@@ -1451,7 +1454,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -3734,6 +3737,416 @@ initialize</setup>
     </enumeratedValueSet>
     <enumeratedValueSet variable="ground-truth-check">
       <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e36" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RTPS"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "GRDY"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FACE"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <metric>true-population-motes</metric>
+    <metric>show-c</metric>
+    <metric>show-s</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;GPSR&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e37" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RTPS"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "GRDY"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FACE"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <metric>true-population-motes</metric>
+    <metric>show-c</metric>
+    <metric>show-s</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-1338276584"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;GPSR&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e37" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RTPS"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "GRDY"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FACE"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <metric>true-population-motes</metric>
+    <metric>show-c</metric>
+    <metric>show-s</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="1310021339"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;GPSR&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e101_load_balance" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <final>output-load-balance</final>
+    <timeLimit steps="100000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RTPS"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "GRDY"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FACE"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <metric>true-population-motes</metric>
+    <metric>show-c</metric>
+    <metric>show-s</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
+      <value value="&quot;CDC-towards&quot;"/>
+      <value value="&quot;Shortest-path-tree&quot;"/>
+      <value value="&quot;GPSR&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e102_robustness" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="11000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RTPS"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "GRDY"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FACE"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <metric>true-population-motes</metric>
+    <metric>show-c</metric>
+    <metric>show-s</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+      <value value="1"/>
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
+      <value value="&quot;CDC-towards&quot;"/>
+      <value value="&quot;Shortest-path-tree&quot;"/>
+      <value value="&quot;GPSR&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="failure-sensor-proportion">
+      <value value="1"/>
+      <value value="5"/>
+      <value value="10"/>
+      <value value="20"/>
+      <value value="40"/>
+      <value value="80"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fail-ticks">
+      <value value="1000"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
