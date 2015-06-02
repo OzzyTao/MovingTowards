@@ -1002,7 +1002,7 @@ INPUTBOX
 295
 600
 current-seed
-1164070185
+-887420101
 1
 0
 Number
@@ -1046,7 +1046,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
-4
+6
 
 MONITOR
 1405
