@@ -80,8 +80,10 @@ to go
     object-tails
     set move-step move-step + 1
   ]
+  if sensorfailure [
   if remainder ticks CMR = (CMR - 1) [print-log]
   if ticks = fail-ticks [kill-random-sensor]
+  ]
   tick
 end
 
@@ -1002,7 +1004,7 @@ INPUTBOX
 295
 600
 current-seed
-1164070185
+1436818635
 1
 0
 Number
@@ -1345,7 +1347,7 @@ SWITCH
 633
 sensorfailure
 sensorfailure
-0
+1
 1
 -1000
 
