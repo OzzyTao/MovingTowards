@@ -74,7 +74,7 @@ to go
   ask maincomponent [step]
   if remainder ticks CMR = 0 [ 
     reset-log-cache
-    if visual-aids [ask motes [ask patch-here [set pcolor white]]]
+    if visual-aids [ask motes [clear-sensing-range]]
     move-objects
     mote-labels
     object-tails
@@ -404,6 +404,7 @@ to step_DONE_TE
           update-global-history msg
           centralized-cdc-validation first msg
           ]
+        count-event
         if mote tree-parent != nobody [send (fput "AEXT" msg) mote tree-parent]
         ]
       ]
@@ -445,19 +446,21 @@ end
 
 to redirect-GR [message root-distance prenode]
   let msg message
+  if not empty? closest-neighbour [
   ifelse last closest-neighbour < root-distance [
     set msg protocal_sender_aware_pack msg who
     send (fput "GRDY" msg) mote first closest-neighbour
     ]
   [
     let tangle included-angle prenode
-    let nextstop next-cyclic-neighbour tangle
+    let nextstop ccw-neighbour tangle
     if not empty? nextstop [
       set msg lput root-distance msg
       set msg protocal_sender_aware_pack msg who
       send (fput "FACE" msg) mote first nextstop
       ]
     ]
+  ]
 end
 
 to-report root-check [record]
@@ -472,17 +475,18 @@ end
 
 to step_IDLE_GR
   if has-message "GRDY" [
-    if visual-aids [ask patch-here [set pcolor black]]
+    if visual-aids [set shape "grdy"]
     let msg but-first received "GRDY"
     let sender protocal_sender_aware_sender msg
     set msg protocal_sender_aware_payload msg
     set sender neighbour-by-id sender
+    set sender root
     let to-root-dis euclidean-distance (list xcor ycor) (but-first root) 
     if not root-check msg [redirect-GR msg to-root-dis sender]
     ]
   
   if has-message "FACE" [
-    if visual-aids [ask patch-here [set pcolor black]]
+    if visual-aids [set shape "face"]
     let msg but-first received "FACE"
     let sender neighbour-by-id protocal_sender_aware_sender msg
     set msg protocal_sender_aware_payload msg
@@ -499,7 +503,7 @@ to step_IDLE_GR
     let sensor self
     let in-range-objects objects with [within-sensing-range sensor]
     ;;visual effect
-    if visual-aids [ifelse count in-range-objects > 0 [highlight-sensing-range] [clear-sensing-range]]
+    if visual-aids [if count in-range-objects > 0 [highlight-sensing-range] ]
     foreach sort in-range-objects [
       if which-active-record [who] of ? = -1 [
         let temprecord (list "NULL" 0 "NULL")
@@ -511,6 +515,7 @@ to step_IDLE_GR
           update-global-history msg
           centralized-cdc-validation first msg
           ]
+        count-event
         let to-root-dis euclidean-distance (list xcor ycor) (but-first root)
         redirect-GR msg to-root-dis root
         ]
@@ -595,7 +600,7 @@ to decide-on-history [record]
         ifelse moving-towards previousBBOX currentBBOX targetzone-boundingbox [log-predicate TRUE] [log-predicate FALSE]
       ]
       log-results testresultline
-      count-event
+      ;;count-event
     ]
   ]
 end
@@ -759,7 +764,7 @@ to reset-log-cache
 end
 
 to print-log
-  print (word "ct-event:" ct-event " ct-dgt:" ct-dgt " ct-cgt:" ct-cgt " predicate:" predicate-list " groundtruth:" groundtruth-list)
+  ;;print (word "ct-event:" ct-event " ct-dgt:" ct-dgt " ct-cgt:" ct-cgt " predicate:" predicate-list " groundtruth:" groundtruth-list)
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -795,7 +800,7 @@ INPUTBOX
 60
 435
 Netsize
-500
+250
 1
 0
 Number
@@ -851,7 +856,7 @@ INPUTBOX
 60
 230
 c
-20
+28.2842712474619
 1
 0
 Number
@@ -862,7 +867,7 @@ INPUTBOX
 110
 230
 s
-5
+7.071067811865475
 1
 0
 Number
@@ -997,7 +1002,7 @@ CHOOSER
 Seed
 Seed
 "none" "random" "manual"
-1
+2
 
 INPUTBOX
 155
@@ -1005,7 +1010,7 @@ INPUTBOX
 295
 600
 current-seed
-801204666
+-1338276584
 1
 0
 Number
@@ -1049,7 +1054,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
-1
+0
 
 MONITOR
 1405
@@ -1426,11 +1431,21 @@ true
 0
 Circle -13840069 true false 2 2 297
 
+face
+true
+0
+Polygon -1184463 true false 135 15 105 120 60 150 120 195 105 225 165 225 225 180 165 165 135 135 165 60 135 30
+
 fish
 true
 0
 Polygon -7500403 true true 150 60 120 90 105 150 135 210 105 240 195 240 165 210 195 150 180 90
 Polygon -16777216 false false 150 60 120 90 105 150 135 210 105 240 195 240 165 210 195 150 180 90
+
+grdy
+true
+0
+Circle -8630108 true false 116 116 67
 
 mote
 true
@@ -1454,7 +1469,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -4062,7 +4077,7 @@ initialize</setup>
     <setup>setup
 initialize</setup>
     <go>go</go>
-    <timeLimit steps="11000"/>
+    <timeLimit steps="50000"/>
     <metric>show-move-step</metric>
     <metric>ct-sent-number-msg-totals</metric>
     <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>

@@ -42,6 +42,26 @@ to-report next-reverse-cyclic-neighbour [tangle]
   report []
 end
 
+to-report ccw-neighbour [tangle]
+  let min_angle 360
+  let min_index -1
+  let index 0
+  foreach neighbourhood [
+    let tmp_angle abs (last ? - tangle)
+    set tmp_angle ifelse-value (tmp_angle > 180) [360 - tmp_angle] [tmp_angle]
+    if tmp_angle != 0 and tmp_angle <= min_angle [
+      set min_index index
+      set min_angle tmp_angle
+      ]
+    set index index + 1
+    ]
+  ifelse min_index = -1 [
+    report []
+    ]  
+  [
+    report item min_index neighbourhood
+    ]
+end
 
 ;; find neighbours in the direction similar to z-zone (two most similiar)
 to set-similar-neighbours
