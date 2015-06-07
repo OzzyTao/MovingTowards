@@ -67,21 +67,41 @@ end
 ;; Changing state for a mote is achieved with the command 'become "STATE"'
 to become [newstate]
   set state newstate
-  set shape "sensor"
-  if state = "DONE" or state = "DONE_TE" [set color 0] ;; Black
-  if state = "INIT" [set color 9.9] ;; White
-  if state = "IDLE" or state = "IDLE_NB" or state = "IDLE_DB" or state = "IDLE_TE" or state = "IDLE_CT" [set color 86] ;; Light blue
-  if state = "CHCK" [set color 104] ;; Dark blue
-  if state = "PITX" [set color 45] ;; Yellow
-  if state = "DEAD" or state = "PEAK" [set color 15] ;; Red
+  if state = "DONE" or state = "DONE_TE" [
+    set color 0
+    set shape "sensor"
+    ] ;; Black
+  if state = "INIT" [
+    set color 9.9
+    set shape "sensor"
+    ] ;; White
+  if state = "IDLE" or state = "IDLE_NB" or state = "IDLE_DB" or state = "IDLE_TE" or state = "IDLE_CT" [
+    set color 86
+    set shape "sensor"
+    ] ;; Light blue
+  if state = "CHCK" [
+    set color 104
+    set shape "sensor"
+    ] ;; Dark blue
+  if state = "PITX" [
+    set color 45
+    set shape "sensor"
+    ] ;; Yellow
+  if state = "DEAD" or state = "PEAK" [
+    set color 15
+    set shape "sensor"
+    ] ;; Red
   if state = "SINK" or state = "LEAD" or state = "ROOT" [
     set color 114
     set shape "mote_communicate"
     ] ;; Purple
   if state = "EVNT" or state = "GBRG" or state = "RNBR" or state = "BNDY" [
     set color 95 ;; Mid blue
+    set shape "sensor"
   ]
-  if state = "INER" [set color red]
+  if state = "INER" [
+    set color red
+    set shape "sensor"]
   
   if state = "SEND" [
     set shape "mote_communicate"
