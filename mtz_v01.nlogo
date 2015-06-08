@@ -190,7 +190,8 @@ to step_INER
     ]
   
   if has-message "FLOD" [
-    let record but-first received "FLOD"
+    let msg but-first received "FLOD"
+    let record protocal_hopcount_decode msg
     if not is-old record [
       if visual-aids [ask patch-here [set pcolor black]]
       update-local-history record TRUE
@@ -211,16 +212,18 @@ to step_BNDY
     ]
   
   if has-message "FLOD" [
-    let record but-first received "FLOD"
+    let msg but-first received "FLOD"
+    let record protocal_hopcount_decode msg
     if not is-old record [
       if visual-aids [ask patch-here [set pcolor black]]
       update-local-history record TRUE
-      broadcast fput "FLOD" record
+      let nextmsg (protocal_hopcount_nextmsg msg [])
+      if not empty? nextmsg [broadcast fput "FLOD" nextmsg]
       ]
     ]
   ;; on sensing an entering event
   let msgs on-sensing-movement TRUE
-  foreach msgs [broadcast fput "FLOD" ?]
+  foreach msgs [broadcast fput "FLOD" (protocal_hopcount_encode ?)]
 end
 ;;;;;;;; hybrid algorithm end ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -800,7 +803,7 @@ INPUTBOX
 60
 435
 Netsize
-250
+500
 1
 0
 Number
@@ -856,7 +859,7 @@ INPUTBOX
 60
 230
 c
-28.2842712474619
+20
 1
 0
 Number
@@ -867,7 +870,7 @@ INPUTBOX
 110
 230
 s
-7.071067811865475
+5
 1
 0
 Number
@@ -1054,7 +1057,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
-0
+1
 
 MONITOR
 1405
@@ -1084,7 +1087,7 @@ INPUTBOX
 312
 135
 searching-steps
-3
+1
 1
 0
 Number
@@ -1469,7 +1472,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
