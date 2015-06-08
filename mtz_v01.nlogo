@@ -5350,31 +5350,6 @@ initialize</setup>
       <value value="921738965"/>
       <value value="1965397121"/>
       <value value="1943841441"/>
-      <value value="143861080"/>
-      <value value="-889913198"/>
-      <value value="1072592003"/>
-      <value value="350083400"/>
-      <value value="1450185415"/>
-      <value value="1308047612"/>
-      <value value="300414372"/>
-      <value value="509564693"/>
-      <value value="1703346065"/>
-      <value value="-1966990726"/>
-      <value value="1610712935"/>
-      <value value="-625556126"/>
-      <value value="634811492"/>
-      <value value="-404905123"/>
-      <value value="564272557"/>
-      <value value="-1325302558"/>
-      <value value="-250662583"/>
-      <value value="-1406683890"/>
-      <value value="899698809"/>
-      <value value="-1425951580"/>
-      <value value="-1043874461"/>
-      <value value="-1146635944"/>
-      <value value="-718028608"/>
-      <value value="-1856174111"/>
-      <value value="1229448163"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Netsize">
       <value value="50"/>
@@ -5843,6 +5818,114 @@ initialize</setup>
     </enumeratedValueSet>
     <enumeratedValueSet variable="CommunicationStrategy">
       <value value="&quot;Hybrid&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e56" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="2000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RTPS"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "GRDY"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FACE"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <metric>true-population-motes</metric>
+    <metric>show-c</metric>
+    <metric>show-s</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="143861080"/>
+      <value value="-889913198"/>
+      <value value="1072592003"/>
+      <value value="350083400"/>
+      <value value="1450185415"/>
+      <value value="1308047612"/>
+      <value value="300414372"/>
+      <value value="509564693"/>
+      <value value="1703346065"/>
+      <value value="-1966990726"/>
+      <value value="1610712935"/>
+      <value value="-625556126"/>
+      <value value="634811492"/>
+      <value value="-404905123"/>
+      <value value="564272557"/>
+      <value value="-1325302558"/>
+      <value value="-250662583"/>
+      <value value="-1406683890"/>
+      <value value="899698809"/>
+      <value value="-1425951580"/>
+      <value value="-1043874461"/>
+      <value value="-1146635944"/>
+      <value value="-718028608"/>
+      <value value="-1856174111"/>
+      <value value="1229448163"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
+      <value value="&quot;CDC-towards&quot;"/>
+      <value value="&quot;Shortest-path-tree&quot;"/>
+      <value value="&quot;GPSR&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="move-type">
       <value value="&quot;CRW&quot;"/>
