@@ -4080,7 +4080,7 @@ initialize</setup>
     <setup>setup
 initialize</setup>
     <go>go</go>
-    <timeLimit steps="50000"/>
+    <timeLimit steps="20000"/>
     <metric>show-move-step</metric>
     <metric>ct-sent-number-msg-totals</metric>
     <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
@@ -4108,6 +4108,9 @@ initialize</setup>
       <value value="-640111348"/>
       <value value="1"/>
       <value value="10"/>
+      <value value="-1"/>
+      <value value="555"/>
+      <value value="666"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Netsize">
       <value value="500"/>
@@ -4156,6 +4159,7 @@ initialize</setup>
       <value value="true"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="failure-sensor-proportion">
+      <value value="0"/>
       <value value="1"/>
       <value value="5"/>
       <value value="10"/>
@@ -4199,9 +4203,11 @@ initialize</setup>
       <value value="-640111348"/>
       <value value="1"/>
       <value value="10"/>
+      <value value="100"/>
+      <value value="-100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Netsize">
-      <value value="500"/>
+      <value value="1000"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="ObjNo">
       <value value="1"/>
@@ -4213,7 +4219,7 @@ initialize</setup>
       <value value="5"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="fixed-connectivity">
-      <value value="true"/>
+      <value value="false"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="CMR">
       <value value="100"/>
@@ -4224,6 +4230,7 @@ initialize</setup>
     <enumeratedValueSet variable="CommunicationStrategy">
       <value value="&quot;Flooding&quot;"/>
       <value value="&quot;CDC-towards&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="move-type">
       <value value="&quot;CRW&quot;"/>
@@ -4238,6 +4245,7 @@ initialize</setup>
       <value value="0"/>
       <value value="1"/>
       <value value="2"/>
+      <value value="3"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="ground-truth-check">
       <value value="true"/>
