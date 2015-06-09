@@ -9,7 +9,7 @@
 ;; * Received messages in msgrecv (messages received and processed), same structure. 
 ;; m1, m2, ... is message name; n1, n2, ... is number of messages; l1, l2, ... is message length
 turtles-own [messages state parent children msgsent msgrecv msghear ctmsgsent ctmsgrecv ctmsghear componentID node-degree]
-globals [maincomponentID num-turtles-maincomponent]
+globals [maincomponentID num-turtles-maincomponent setup-msg-headers moniter-msg-headers]
 ;; Each patch can store the local variable region.
 ;; Each patch can store the local variable height which will be the sensed value of any mote in the patch
 patches-own [region height] 
@@ -158,7 +158,7 @@ end
 
 ;; Broadcasting messages involves sending them to all link neighbors
 to broadcast [message]
-  set num-msgsent num-msgsent + 1
+  msg-ct-movement (first message)
   ask comlink-neighbors [receive message]
   if trackmsg [
     update-msg-count "SENT" message
@@ -167,7 +167,7 @@ end
 
 ;; Sending messages is a unicast to a specified target
 to send [message target]
-  set num-msgsent num-msgsent + 1
+  msg-ct-movement (first message)
   ask target [receive message]
   if trackmsg [
     update-msg-count "SENT" message
@@ -829,4 +829,18 @@ end
 
 to-report show-s
   report s
+end
+
+to msg-ct-movement [name]
+  ifelse member? name setup-msg-headers [
+    set init-msg-ct init-msg-ct + 1
+    ]
+  [
+    set moniter-msg-ct moniter-msg-ct + 1
+    ]
+  set num-msgsent num-msgsent + 1
+end
+
+to-report enough-events? [top]
+  ifelse total-events >= top [report True] [report False]
 end

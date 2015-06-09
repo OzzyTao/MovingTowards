@@ -15,10 +15,13 @@ undirected-link-breed [gridlines gridline]
 breed [motegridpoints motegridpoint]
 undirected-link-breed [motegridlines motegridline]
 ;; bounding box is represented as list of cor: [top left bottom right]
-globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed
-         interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt maincomponent predicate-list groundtruth-list diameter]
+globals [targetzone-boundingbox motegridanchor-list global-history filename testresultline movement-seed total-events
+         interior-num boundary-num move-step max-tree-depth ct-event ct-dgt ct-cgt maincomponent predicate-list groundtruth-list diameter init-msg-ct moniter-msg-ct output-cache]
 ;; System setup and initialization
 to initialize
+  set setup-msg-headers (list "ZBOX" "RANGE" "TREE" "RTPS")
+  set moniter-msg-headers (list "AEXT" "OETR" "FLOD" "GRDY" "FACE")
+  
   setup-zzone
   ;; store the info of z-zone in a global variable
   set-target-bounding-box
@@ -59,7 +62,8 @@ to initialize
   set movement-seed current-seed
   set interior-num 0
   set boundary-num 0
-    
+  
+  set total-events 0  
   set ct-event 0
   set ct-dgt -1
   set ct-cgt -1
@@ -73,7 +77,7 @@ to go
   clear-ctmsgs
   ask maincomponent [step]
   if remainder ticks CMR = 0 [ 
-    reset-log-cache
+    output-logline
     if visual-aids [ask motes [clear-sensing-range]]
     move-objects
     mote-labels
@@ -696,7 +700,8 @@ to setup-zzone
     ]  
 end
 
-to setup-output  
+to setup-output
+  set output-cache []  
   set filename "../mtz-tests/flooding-cdc.csv"
   file-close-all
   if output-to-file [
@@ -764,6 +769,36 @@ to reset-log-cache
   set ct-cgt -1
   set predicate-list []
   set groundtruth-list []
+  set init-msg-ct 0
+  set moniter-msg-ct 0
+end
+
+to output-logline
+  if ct-event > 0 [
+    set output-cache lput (list netsize CommunicationStrategy current-seed c s ticks move-step ct-event ct-dgt ct-cgt predicate-list groundtruth-list init-msg-ct moniter-msg-ct ) output-cache
+    set total-events total-events + 1
+    ]
+  reset-log-cache
+end
+
+to write-log-to-file [log-file]
+  file-close-all
+  ifelse file-exists? log-file [
+    file-open log-file
+    ]
+  [
+    file-open log-file
+    file-print "netsize,alg,seed,c,s,tick,movestep,ct-event,ct-dgt,ct-cgt,predicate-list,groundtruth-list,init-msg-ct,moniter-msg-ct"
+    ]
+  foreach output-cache [
+    let index 0
+    while [index < 13] [
+      file-type (word item index ? ",")
+      set index index + 1
+      ]
+    file-print item 13 ?
+    ]
+  file-close
 end
 
 to print-log
@@ -803,7 +838,7 @@ INPUTBOX
 60
 435
 Netsize
-500
+750
 1
 0
 Number
@@ -859,7 +894,7 @@ INPUTBOX
 60
 230
 c
-20
+16.32993161855452
 1
 0
 Number
@@ -870,7 +905,7 @@ INPUTBOX
 110
 230
 s
-5
+4.08248290463863
 1
 0
 Number
@@ -1013,7 +1048,7 @@ INPUTBOX
 295
 600
 current-seed
--1338276584
+1968193823
 1
 0
 Number
@@ -1057,7 +1092,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
-1
+0
 
 MONITOR
 1405
@@ -1087,7 +1122,7 @@ INPUTBOX
 312
 135
 searching-steps
-1
+3
 1
 0
 Number
@@ -1472,7 +1507,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -6193,6 +6228,63 @@ initialize</setup>
       <value value="&quot;CDC-towards&quot;"/>
       <value value="&quot;Shortest-path-tree&quot;"/>
       <value value="&quot;GPSR&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="test-DIY-output" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <final>write-log-to-file "../mtz-tests/output-test.csv"</final>
+    <timeLimit steps="20000"/>
+    <exitCondition>enough-events? 10</exitCondition>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="1968193823"/>
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="750"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="move-type">
       <value value="&quot;CRW&quot;"/>
