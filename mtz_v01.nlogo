@@ -157,9 +157,11 @@ to step_IDLE
       if not empty? nextmsg [broadcast fput "AEXT" nextmsg]
       ]
   ] 
-  ;; when sensing entering events  
+  ;; when sensing entering events
+  if ticks > 1000 [  
   let msgs on-sensing-movement TRUE
   foreach msgs [ broadcast fput "AEXT" (protocal_hopcount_encode ?)]
+  ]
 end
 ;;;;;;;;;;;;flooding algorithm end;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -202,8 +204,10 @@ to step_INER
       ]
     ]
   ;; on sensing an entering event
+  if ticks > 1000 [
   let msgs on-sensing-movement TRUE
   foreach msgs [broadcast fput "OETR" ?]
+  ]
 end
 
 to step_BNDY
@@ -226,8 +230,10 @@ to step_BNDY
       ]
     ]
   ;; on sensing an entering event
+  if ticks > 1000 [
   let msgs on-sensing-movement TRUE
   foreach msgs [broadcast fput "FLOD" (protocal_hopcount_encode ?)]
+  ]
 end
 ;;;;;;;; hybrid algorithm end ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -270,12 +276,14 @@ to step_IDLE_DB
       ]
     ]
   ]
-
+  
+  if ticks > 1000 [
   let msgs on-sensing-movement TRUE
   foreach msgs [
     let msg protocal_hopcount_encode (lput (map [first ?] towards-neighbour) ?)
     set msg ifelse-value empty? towards-neighbour [ protocal_multicast_pack msg (map [first ?] similar-neighbour) ] [ protocal_multicast_pack msg (map [first ?] towards-neighbour) ]
     broadcast fput "AEXT" msg
+  ]
   ]
 end
 ;;;;;;;;;;;;;;;;;;direction based algorithm (cyclic order);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -329,11 +337,14 @@ to step_IDLE_CT
       ]
     ]
   ]
+  
+  if ticks > 1000 [
   let msgs on-sensing-movement TRUE
   foreach msgs [
     let msg protocal_multicast_pack (protocal_hopcount_encode ?) []
     broadcast fput "AEXT" msg
     ]
+  ]
 end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;direction based algorithm (CDC-moving-towards);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -391,6 +402,7 @@ to step_DONE_TE
     ]
    
   ;; on sensing entering event
+  if ticks > 1000 [
   ifelse tree-parent = -1 [
     let msgs on-sensing-movement TRUE
     ]
@@ -417,6 +429,7 @@ to step_DONE_TE
       ]
     close-inactive-records
     ]
+  ]
 end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;shortest path tree algorithm;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -446,9 +459,34 @@ to step_WTRT
 end
 
 to setup-neighbour-info-GR
+  set-gg-neighbour
   set-closest-neighbour
   rank-neighbour-dir
   become "IDLE"
+end
+
+to set-gg-neighbour
+  let thisnode (list xcor ycor)
+  let gg-neighbourhood []
+  foreach neighbourhood [
+    let add true
+    let currentnode (list item 1 ? item 2 ?)
+    let delete_ids []
+    foreach gg-neighbourhood [
+      let tmppoint (list item 1 ? item 2 ?)
+      if ((euclidean-distance thisnode tmppoint) ^ 2) + ((euclidean-distance currentnode tmppoint) ^ 2) < ((euclidean-distance thisnode currentnode) ^ 2) [set add false]
+      if ((euclidean-distance thisnode currentnode) ^ 2) + ((euclidean-distance tmppoint currentnode) ^ 2) < ((euclidean-distance thisnode tmppoint) ^ 2) [
+        ;set gg-neighbourhood remove ? gg-neighbourhood
+        set delete_ids lput first ? delete_ids
+        ]
+      ]
+    set gg-neighbourhood filter [not member? first ? delete_ids] gg-neighbourhood
+    if add [
+      set gg-neighbourhood lput ? gg-neighbourhood
+      ]
+    ]
+  foreach gg-neighbourhood [ask comlink first ? who [set color red]]
+  set neighbourhood gg-neighbourhood
 end
 
 to redirect-GR [message root-distance prenode]
@@ -503,6 +541,7 @@ to step_IDLE_GR
     ]
   
   ;; on sensing entering event
+  if ticks > 1000 [
   ifelse who = first root [
     let msgs on-sensing-movement TRUE
     ]
@@ -528,7 +567,8 @@ to step_IDLE_GR
         ]
       ]
     close-inactive-records
-    ]  
+    ]
+  ]  
 end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;Georouting (GPSR);;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -838,7 +878,7 @@ INPUTBOX
 60
 435
 Netsize
-750
+250
 1
 0
 Number
@@ -894,7 +934,7 @@ INPUTBOX
 60
 230
 c
-16.32993161855452
+20
 1
 0
 Number
@@ -905,7 +945,7 @@ INPUTBOX
 110
 230
 s
-4.08248290463863
+5
 1
 0
 Number
@@ -1048,7 +1088,7 @@ INPUTBOX
 295
 600
 current-seed
-1968193823
+801204666
 1
 0
 Number
@@ -1092,7 +1132,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
-0
+6
 
 MONITOR
 1405
@@ -1402,7 +1442,7 @@ SWITCH
 208
 fixed-connectivity
 fixed-connectivity
-0
+1
 1
 -1000
 
@@ -1507,7 +1547,7 @@ true
 Circle -7500403 false true 0 0 300
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -6426,11 +6466,11 @@ initialize</setup>
       <value value="false"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="test-DIY-output" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="test-DIY-output" repetitions="1" runMetricsEveryStep="false">
     <setup>setup
 initialize</setup>
     <go>go</go>
-    <final>write-log-to-file "../mtz-tests/output-test.csv"</final>
+    <final>write-log-to-file "../mtz-tests/test_test.csv"</final>
     <timeLimit steps="20000"/>
     <exitCondition>enough-events? 10</exitCondition>
     <enumeratedValueSet variable="Seed">
@@ -6439,9 +6479,13 @@ initialize</setup>
     <enumeratedValueSet variable="current-seed">
       <value value="1968193823"/>
       <value value="2"/>
+      <value value="5"/>
+      <value value="100"/>
+      <value value="200"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="Netsize">
-      <value value="750"/>
+      <value value="100"/>
+      <value value="250"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="ObjNo">
       <value value="1"/>
@@ -6453,7 +6497,7 @@ initialize</setup>
       <value value="5"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="fixed-connectivity">
-      <value value="true"/>
+      <value value="false"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="CMR">
       <value value="100"/>
@@ -6462,7 +6506,8 @@ initialize</setup>
       <value value="&quot;UDG&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="CommunicationStrategy">
-      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;GPSR&quot;"/>
+      <value value="&quot;Shortest-path-tree&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="move-type">
       <value value="&quot;CRW&quot;"/>
@@ -6483,7 +6528,7 @@ initialize</setup>
       <value value="false"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="diy_e1" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="diy_e1" repetitions="1" runMetricsEveryStep="false">
     <setup>setup
 initialize</setup>
     <go>go</go>
@@ -6533,9 +6578,6 @@ initialize</setup>
       <value value="&quot;UDG&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="CommunicationStrategy">
-      <value value="&quot;Flooding&quot;"/>
-      <value value="&quot;Hybrid&quot;"/>
-      <value value="&quot;CDC-towards&quot;"/>
       <value value="&quot;Shortest-path-tree&quot;"/>
       <value value="&quot;GPSR&quot;"/>
     </enumeratedValueSet>
@@ -6656,6 +6698,96 @@ initialize</setup>
     </enumeratedValueSet>
     <enumeratedValueSet variable="sensorfailure">
       <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="e105_various_hops" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <metric>show-move-step</metric>
+    <metric>ct-sent-number-msg-totals</metric>
+    <metric>ct-sent-number-msg-totals-by-name "ZBOX"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RANGE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "TREE"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "RTPS"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "AEXT"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "OETR"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FLOD"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "GRDY"</metric>
+    <metric>ct-sent-number-msg-totals-by-name "FACE"</metric>
+    <metric>show-current-seed</metric>
+    <metric>show-moving-towards</metric>
+    <metric>show-true-moving-towards</metric>
+    <metric>show-ct-dgt</metric>
+    <metric>show-ct-cgt</metric>
+    <metric>show-ct-event</metric>
+    <metric>true-population-motes</metric>
+    <metric>show-c</metric>
+    <metric>show-s</metric>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-640111348"/>
+      <value value="1"/>
+      <value value="10"/>
+      <value value="100"/>
+      <value value="-100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="500"/>
+      <value value="750"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;CDC-towards&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="0"/>
+      <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="failure-sensor-proportion">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fail-ticks">
+      <value value="1000"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
