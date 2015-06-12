@@ -466,22 +466,30 @@ to setup-neighbour-info-GR
   become "IDLE"
 end
 
+to-report gg-condition-violated [itself checkpoint otherpoint] 
+  ifelse (first itself - first checkpoint) ^ 2 + (last itself - last checkpoint) ^ 2 + (first checkpoint - first otherpoint) ^ 2 + (last checkpoint - last otherpoint) ^ 2 < (first itself - first otherpoint) ^ 2 + (last itself - last otherpoint) ^ 2 [
+    report true
+    ]
+  [
+    report false
+    ]
+end
+
 to set-gg-neighbour
   let thisnode (list xcor ycor)
   let gg-neighbourhood []
   foreach neighbourhood [
     let add true
     let currentnode (list item 1 ? item 2 ?)
-    let delete_ids []
+    ;let delete_ids []
     foreach gg-neighbourhood [
       let tmppoint (list item 1 ? item 2 ?)
-      if ((euclidean-distance thisnode tmppoint) ^ 2) + ((euclidean-distance currentnode tmppoint) ^ 2) < ((euclidean-distance thisnode currentnode) ^ 2) [set add false]
-      if ((euclidean-distance thisnode currentnode) ^ 2) + ((euclidean-distance tmppoint currentnode) ^ 2) < ((euclidean-distance thisnode tmppoint) ^ 2) [
-        ;set gg-neighbourhood remove ? gg-neighbourhood
-        set delete_ids lput first ? delete_ids
-        ]
+      ;if ((euclidean-distance thisnode tmppoint) ^ 2) + ((euclidean-distance currentnode tmppoint) ^ 2) < ((euclidean-distance thisnode currentnode) ^ 2) [set add false]
+      if gg-condition-violated thisnode tmppoint currentnode [set add false]
+      ;if ((euclidean-distance thisnode currentnode) ^ 2) + ((euclidean-distance tmppoint currentnode) ^ 2) < ((euclidean-distance thisnode tmppoint) ^ 2) [set gg-neighbourhood remove ? gg-neighbourhood]
+      if gg-condition-violated thisnode currentnode tmppoint [set gg-neighbourhood remove ? gg-neighbourhood]
       ]
-    set gg-neighbourhood filter [not member? first ? delete_ids] gg-neighbourhood
+    ;set gg-neighbourhood filter [not member? first ? delete_ids] gg-neighbourhood
     if add [
       set gg-neighbourhood lput ? gg-neighbourhood
       ]
@@ -523,6 +531,7 @@ to step_IDLE_GR
   if has-message "GRDY" [
     if visual-aids [set shape "grdy"]
     let msg but-first received "GRDY"
+    print (word who "::" msg)
     let sender protocal_sender_aware_sender msg
     set msg protocal_sender_aware_payload msg
     set sender neighbour-by-id sender
@@ -534,6 +543,7 @@ to step_IDLE_GR
   if has-message "FACE" [
     if visual-aids [set shape "face"]
     let msg but-first received "FACE"
+    print (word who "::" msg)
     let sender neighbour-by-id protocal_sender_aware_sender msg
     set msg protocal_sender_aware_payload msg
     let to-root-dis last msg
@@ -878,7 +888,7 @@ INPUTBOX
 60
 435
 Netsize
-250
+1500
 1
 0
 Number
@@ -1088,7 +1098,7 @@ INPUTBOX
 295
 600
 current-seed
-426340273
+1703346065
 1
 0
 Number
@@ -1132,7 +1142,7 @@ CHOOSER
 CommunicationStrategy
 CommunicationStrategy
 "Flooding" "Hybrid" "Direction-based" "CDC-similarity" "Shortest-path-tree" "CDC-towards" "GPSR"
-6
+0
 
 MONITOR
 1405
@@ -6945,6 +6955,99 @@ initialize</setup>
       <value value="&quot;CDC-towards&quot;"/>
       <value value="&quot;Shortest-path-tree&quot;"/>
       <value value="&quot;GPSR&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="diy_hybrid" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <final>write-log-to-file "../mtz-tests/diy_hybrid.csv"</final>
+    <timeLimit steps="20000"/>
+    <exitCondition>enough-events? 10</exitCondition>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="-2044405160"/>
+      <value value="-1935923704"/>
+      <value value="1611618664"/>
+      <value value="-1713329509"/>
+      <value value="1365902865"/>
+      <value value="1441754299"/>
+      <value value="408690988"/>
+      <value value="921738965"/>
+      <value value="1965397121"/>
+      <value value="1943841441"/>
+      <value value="143861080"/>
+      <value value="-889913198"/>
+      <value value="1072592003"/>
+      <value value="350083400"/>
+      <value value="1450185415"/>
+      <value value="1308047612"/>
+      <value value="300414372"/>
+      <value value="509564693"/>
+      <value value="1703346065"/>
+      <value value="-1966990726"/>
+      <value value="1610712935"/>
+      <value value="-625556126"/>
+      <value value="634811492"/>
+      <value value="-404905123"/>
+      <value value="564272557"/>
+      <value value="-1325302558"/>
+      <value value="-250662583"/>
+      <value value="-1406683890"/>
+      <value value="899698809"/>
+      <value value="-1425951580"/>
+      <value value="-1043874461"/>
+      <value value="-1146635944"/>
+      <value value="-718028608"/>
+      <value value="-1856174111"/>
+      <value value="1229448163"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="1750"/>
+      <value value="2000"/>
+      <value value="2500"/>
+      <value value="3000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Hybrid&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="move-type">
       <value value="&quot;CRW&quot;"/>
