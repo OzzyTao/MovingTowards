@@ -334,7 +334,7 @@ to step_IDLE_CT
         set multicast-msg protocal_multicast_pack hopcount-msg ifelse-value (moving-towards record-bbox record bounding-box targetzone-boundingbox) [ [] ] [
           ifelse-value (empty? towards-neighbour) [(map [first ?] similar-neighbour)] [(map [first ?] towards-neighbour)]
           ]
-        broadcast fput "AEXT" multicast-msg
+        if not empty? multicast-msg [broadcast fput "AEXT" multicast-msg]
       ]
     ]
   ]
@@ -482,12 +482,10 @@ to set-gg-neighbour
     let add true
     let currentnode (list item 1 ? item 2 ?)
     ;let delete_ids []
-    foreach gg-neighbourhood [
+    foreach neighbourhood [
       let tmppoint (list item 1 ? item 2 ?)
-      ;if ((euclidean-distance thisnode tmppoint) ^ 2) + ((euclidean-distance currentnode tmppoint) ^ 2) < ((euclidean-distance thisnode currentnode) ^ 2) [set add false]
       if gg-condition-violated thisnode tmppoint currentnode [set add false]
-      ;if ((euclidean-distance thisnode currentnode) ^ 2) + ((euclidean-distance tmppoint currentnode) ^ 2) < ((euclidean-distance thisnode tmppoint) ^ 2) [set gg-neighbourhood remove ? gg-neighbourhood]
-      if gg-condition-violated thisnode currentnode tmppoint [set gg-neighbourhood remove ? gg-neighbourhood]
+      ;;if gg-condition-violated thisnode currentnode tmppoint [set gg-neighbourhood remove ? gg-neighbourhood]
       ]
     ;set gg-neighbourhood filter [not member? first ? delete_ids] gg-neighbourhood
     if add [
@@ -531,7 +529,7 @@ to step_IDLE_GR
   if has-message "GRDY" [
     if visual-aids [set shape "grdy"]
     let msg but-first received "GRDY"
-    print (word who "::" msg)
+    ;;print (word who "::" msg)
     let sender protocal_sender_aware_sender msg
     set msg protocal_sender_aware_payload msg
     set sender neighbour-by-id sender
@@ -543,7 +541,7 @@ to step_IDLE_GR
   if has-message "FACE" [
     if visual-aids [set shape "face"]
     let msg but-first received "FACE"
-    print (word who "::" msg)
+    ;;print (word who "::" msg)
     let sender neighbour-by-id protocal_sender_aware_sender msg
     set msg protocal_sender_aware_payload msg
     let to-root-dis last msg
@@ -825,7 +823,7 @@ end
 
 to output-logline
   if ct-event > 0 [
-    set output-cache lput (list netsize CommunicationStrategy current-seed c s ticks move-step ct-event ct-dgt ct-cgt predicate-list groundtruth-list init-msg-ct moniter-msg-ct ) output-cache
+    set output-cache lput (list netsize CommunicationStrategy current-seed c s ticks move-step ct-event ct-dgt ct-cgt predicate-list groundtruth-list init-msg-ct moniter-msg-ct failure-sensor-proportion searching-steps) output-cache
     set total-events total-events + 1
     ]
   reset-log-cache
@@ -838,15 +836,15 @@ to write-log-to-file [log-file]
     ]
   [
     file-open log-file
-    file-print "netsize,alg,seed,c,s,tick,movestep,ct-event,ct-dgt,ct-cgt,predicate-list,groundtruth-list,init-msg-ct,moniter-msg-ct"
+    file-print "netsize,alg,seed,c,s,tick,movestep,ct-event,ct-dgt,ct-cgt,predicate-list,groundtruth-list,init-msg-ct,moniter-msg-ct,failure-sensor-proportion,searching-steps"
     ]
   foreach output-cache [
     let index 0
-    while [index < 13] [
+    while [index < 15] [
       file-type (word item index ? ",")
       set index index + 1
       ]
-    file-print item 13 ?
+    file-print item 15 ?
     ]
   file-close
 end
@@ -7027,7 +7025,9 @@ initialize</setup>
     <enumeratedValueSet variable="Netsize">
       <value value="1750"/>
       <value value="2000"/>
+      <value value="2250"/>
       <value value="2500"/>
+      <value value="2750"/>
       <value value="3000"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="ObjNo">
@@ -7201,6 +7201,317 @@ initialize</setup>
       <value value="&quot;Hybrid&quot;"/>
       <value value="&quot;CDC-towards&quot;"/>
       <value value="&quot;Shortest-path-tree&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="diy_robustness" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <final>write-log-to-file "../mtz-tests/diy_robustness.csv"</final>
+    <timeLimit steps="30000"/>
+    <exitCondition>enough-events? 20</exitCondition>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="199234770"/>
+      <value value="2126839149"/>
+      <value value="-1075215490"/>
+      <value value="426340273"/>
+      <value value="918098369"/>
+      <value value="1601265801"/>
+      <value value="-1285833180"/>
+      <value value="1944336071"/>
+      <value value="-1701481219"/>
+      <value value="1225483122"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="500"/>
+      <value value="1000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Shortest-path-tree&quot;"/>
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;CDC-towards&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="failure-sensor-proportion">
+      <value value="0"/>
+      <value value="1"/>
+      <value value="5"/>
+      <value value="10"/>
+      <value value="20"/>
+      <value value="40"/>
+      <value value="60"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fail-ticks">
+      <value value="900"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="diy_steps" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <final>write-log-to-file "../mtz-tests/diy_steps.csv"</final>
+    <timeLimit steps="20000"/>
+    <exitCondition>enough-events? 10</exitCondition>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="1968193823"/>
+      <value value="-624557683"/>
+      <value value="-1850302097"/>
+      <value value="595620922"/>
+      <value value="731509428"/>
+      <value value="-1538579864"/>
+      <value value="408498025"/>
+      <value value="-1831750279"/>
+      <value value="-1498043179"/>
+      <value value="-2012342585"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;Flooding&quot;"/>
+      <value value="&quot;Hybrid&quot;"/>
+      <value value="&quot;CDC-towards&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="move-type">
+      <value value="&quot;CRW&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="trackmsg">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="output-to-file">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="searching-steps">
+      <value value="1"/>
+      <value value="2"/>
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ground-truth-check">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sensorfailure">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="diy_GPSR" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup
+initialize</setup>
+    <go>go</go>
+    <final>write-log-to-file "../mtz-tests/diy_GPSR.csv"</final>
+    <timeLimit steps="20000"/>
+    <exitCondition>enough-events? 10</exitCondition>
+    <enumeratedValueSet variable="Seed">
+      <value value="&quot;manual&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="current-seed">
+      <value value="199234770"/>
+      <value value="2126839149"/>
+      <value value="-1075215490"/>
+      <value value="426340273"/>
+      <value value="918098369"/>
+      <value value="1601265801"/>
+      <value value="-1285833180"/>
+      <value value="1944336071"/>
+      <value value="-1701481219"/>
+      <value value="1225483122"/>
+      <value value="-1184662325"/>
+      <value value="-1279222226"/>
+      <value value="886269248"/>
+      <value value="1983226376"/>
+      <value value="2121556210"/>
+      <value value="146263706"/>
+      <value value="427158359"/>
+      <value value="458654036"/>
+      <value value="1361396208"/>
+      <value value="-981349168"/>
+      <value value="1849720905"/>
+      <value value="-1891741125"/>
+      <value value="-1286362165"/>
+      <value value="-404776106"/>
+      <value value="-777579243"/>
+      <value value="1340668975"/>
+      <value value="184634490"/>
+      <value value="856794903"/>
+      <value value="-1887525501"/>
+      <value value="-843570571"/>
+      <value value="234695050"/>
+      <value value="-254395013"/>
+      <value value="346884282"/>
+      <value value="2053563118"/>
+      <value value="935084157"/>
+      <value value="235350690"/>
+      <value value="99645020"/>
+      <value value="1066889412"/>
+      <value value="-2122105652"/>
+      <value value="684447155"/>
+      <value value="203792430"/>
+      <value value="1671255988"/>
+      <value value="209535595"/>
+      <value value="442859968"/>
+      <value value="-1359680172"/>
+      <value value="1968193823"/>
+      <value value="-624557683"/>
+      <value value="-1850302097"/>
+      <value value="595620922"/>
+      <value value="731509428"/>
+      <value value="-1538579864"/>
+      <value value="408498025"/>
+      <value value="-1831750279"/>
+      <value value="-1498043179"/>
+      <value value="-2012342585"/>
+      <value value="-2044405160"/>
+      <value value="-1935923704"/>
+      <value value="1611618664"/>
+      <value value="-1713329509"/>
+      <value value="1365902865"/>
+      <value value="1441754299"/>
+      <value value="408690988"/>
+      <value value="921738965"/>
+      <value value="1965397121"/>
+      <value value="1943841441"/>
+      <value value="143861080"/>
+      <value value="-889913198"/>
+      <value value="1072592003"/>
+      <value value="350083400"/>
+      <value value="1450185415"/>
+      <value value="1308047612"/>
+      <value value="300414372"/>
+      <value value="509564693"/>
+      <value value="1703346065"/>
+      <value value="-1966990726"/>
+      <value value="1610712935"/>
+      <value value="-625556126"/>
+      <value value="634811492"/>
+      <value value="-404905123"/>
+      <value value="564272557"/>
+      <value value="-1325302558"/>
+      <value value="-250662583"/>
+      <value value="-1406683890"/>
+      <value value="899698809"/>
+      <value value="-1425951580"/>
+      <value value="-1043874461"/>
+      <value value="-1146635944"/>
+      <value value="-718028608"/>
+      <value value="-1856174111"/>
+      <value value="1229448163"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="Netsize">
+      <value value="100"/>
+      <value value="200"/>
+      <value value="300"/>
+      <value value="400"/>
+      <value value="50"/>
+      <value value="250"/>
+      <value value="500"/>
+      <value value="750"/>
+      <value value="1000"/>
+      <value value="1250"/>
+      <value value="1500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ObjNo">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="c">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="s">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fixed-connectivity">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CMR">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="NetworkStructure">
+      <value value="&quot;UDG&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="CommunicationStrategy">
+      <value value="&quot;GPSR&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="move-type">
       <value value="&quot;CRW&quot;"/>

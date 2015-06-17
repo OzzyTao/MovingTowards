@@ -187,6 +187,7 @@ end
 ;; Received checks whether a message of a particular type has been received, and if so
 ;; places this message in the nextmessage slot
 to-report received [mtype]
+  set messages remove-duplicates messages
   foreach messages [
     if first ? = mtype [
       set messages remove-item position ? messages messages ;; This only removes one item

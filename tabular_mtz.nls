@@ -35,7 +35,7 @@ to update-global-history [record]
     ]
   [
     let its-history item location global-history
-    set its-history lput record its-history
+    set its-history insert-record record its-history
     set global-history replace-item location global-history its-history
     ]
 end
@@ -49,12 +49,20 @@ to update-local-history [record keep-history]
     ] 
   [
     ifelse keep-history = TRUE [
-      set history replace-item rindex history (lput record item rindex history)
+      set history replace-item rindex history (insert-record record item rindex history)
       ]
     [
       set history replace-item rindex history (list record)
     ]
   ]
+end
+
+to-report insert-record [record record-list]
+  let rindex 0
+  let len length record-list
+  let timepoint record-timestamp record
+  while [rindex < len and record-timestamp (item rindex record-list) <= timepoint] [set rindex rindex + 1]
+  report (sentence (sublist record-list 0 rindex) (list record) (sublist record-list rindex len))
 end
 
 to-report locate-local-record [obj-id]
